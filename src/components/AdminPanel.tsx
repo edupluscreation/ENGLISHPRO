@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import type { Question, QuestionTopic } from '../types/quiz';
 
 export const GOOGLE_SHEET_API_URL = typeof window !== 'undefined'
-  ? (localStorage.getItem('ssc_sheet_api_url') || 'https://script.google.com/macros/s/AKfycbxSTihxwKdh0uXkTjqDiG9MSoBtJB9hAUNdV35s-fYFh1w5hlK8MEsutTfaz6sxnu-BxQ/exec')
-  : 'https://script.google.com/macros/s/AKfycbxSTihxwKdh0uXkTjqDiG9MSoBtJB9hAUNdV35s-fYFh1w5hlK8MEsutTfaz6sxnu-BxQ/exec';
+  ? (localStorage.getItem('ssc_sheet_api_url') || 'https://script.google.com/macros/s/AKfycbz8ESbyd0w96wAz14cB6esDKFNMZd5TPspSpH3FwlyZDPM-4ScVUPqzcdglFx6I7s6qhQ/exec')
+  : 'https://script.google.com/macros/s/AKfycbz8ESbyd0w96wAz14cB6esDKFNMZd5TPspSpH3FwlyZDPM-4ScVUPqzcdglFx6I7s6qhQ/exec';
 
 import { 
   ShieldCheck, 
