@@ -275,21 +275,20 @@ export const AdminPanel: React.FC = () => {
               <span>Unlock Admin Panel</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setCurrentView('dashboard')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-dim)',
-                fontSize: '12.5px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                marginTop: '4px'
-              }}
-            >
-              ← Back to Student App
-            </button>
+            <div style={{
+              marginTop: '8px',
+              padding: '8px',
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '8px',
+              fontSize: '11.5px',
+              color: 'var(--text-dim)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}>
+              <span>🛡️ Authorized Administrator Portal</span>
+            </div>
           </form>
         </div>
       </div>
@@ -328,20 +327,12 @@ export const AdminPanel: React.FC = () => {
               SSC English PRO — Master Admin
             </h1>
             <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 700 }}>
-              ● Live Cloud Deployment Active
+              ● Live Cloud Console Active
             </span>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            onClick={() => setCurrentView('dashboard')}
-            className="btn-secondary"
-            style={{ padding: '7px 12px', fontSize: '12px' }}
-          >
-            <ArrowLeft size={13} />
-            <span>Student App</span>
-          </button>
 
           <button
             onClick={handleLogout}
