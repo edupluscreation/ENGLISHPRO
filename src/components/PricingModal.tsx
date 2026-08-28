@@ -81,18 +81,21 @@ export const PricingModal: React.FC = () => {
     setIsProcessing(true);
     setErrorMsg(null);
 
+    const livePrice = parseInt(localStorage.getItem('ssc_admin_pro_price') || '29', 10);
+    const liveDays = parseInt(localStorage.getItem('ssc_admin_plan_days') || '60', 10);
+
     // If Razorpay SDK is loaded
     if (typeof window !== 'undefined' && window.Razorpay) {
       const options = {
         key: 'rzp_test_placeholder_key', // Standard test key placeholder
-        amount: 2900, // Amount in paise = ₹29
+        amount: livePrice * 100, // Dynamic Amount in paise
         currency: 'INR',
         name: 'SSC English Pro',
-        description: '2 Months Full Access (6,400+ PYQs, AI Grammar & 120 Rules)',
+        description: `${liveDays} Days Full Access (6,400+ PYQs, AI Grammar & 120 Rules)`,
         image: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>',
         handler: function () {
           setIsProcessing(false);
-          unlockProMembership(60, cleanPhone); // 60 Days with Phone linking
+          unlockProMembership(liveDays, cleanPhone); // Dynamic Days with Phone linking
           confetti({
             particleCount: 120,
             spread: 80,
@@ -460,10 +463,10 @@ export const PricingModal: React.FC = () => {
               <div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                   <span style={{ fontSize: '26px', fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>
-                    ₹29
+                    ₹{parseInt(localStorage.getItem('ssc_admin_pro_price') || '29', 10)}
                   </span>
                   <span style={{ fontSize: '13px', color: 'var(--text-dim)', textDecoration: 'line-through' }}>
-                    ₹299
+                    ₹{parseInt(localStorage.getItem('ssc_admin_orig_price') || '299', 10)}
                   </span>
                   <span style={{
                     fontSize: '11px',
@@ -473,11 +476,11 @@ export const PricingModal: React.FC = () => {
                     padding: '2px 6px',
                     borderRadius: '6px'
                   }}>
-                    90% OFF
+                    {Math.round(((parseInt(localStorage.getItem('ssc_admin_orig_price') || '299', 10) - parseInt(localStorage.getItem('ssc_admin_pro_price') || '29', 10)) / parseInt(localStorage.getItem('ssc_admin_orig_price') || '299', 10)) * 100)}% OFF
                   </span>
                 </div>
                 <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: 600, marginTop: '3px' }}>
-                  ⚡ 60 Days Unlimited Pass (Only ₹0.48/day)
+                  ⚡ {parseInt(localStorage.getItem('ssc_admin_plan_days') || '60', 10)} Days Unlimited Pass
                 </div>
               </div>
 
@@ -533,7 +536,7 @@ export const PricingModal: React.FC = () => {
               }}
             >
               <CreditCard size={17} />
-              <span>{isProcessing ? 'Processing...' : 'Pay ₹29 & Unlock Pro Pass'}</span>
+              <span>{isProcessing ? 'Processing...' : `Pay ₹${localStorage.getItem('ssc_admin_pro_price') || '29'} & Unlock Pro Pass`}</span>
             </button>
 
             {/* Security Trust Note */}

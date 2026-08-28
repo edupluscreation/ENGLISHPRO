@@ -81,7 +81,8 @@ export type AppView =
   | 'bookmarks' 
   | 'grammar'
   | 'grammar_checker'
-  | 'profile';
+  | 'profile'
+  | 'admin';
 
 export interface QuizState {
   topic?: QuestionTopic;

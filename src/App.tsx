@@ -12,13 +12,26 @@ import { Bookmarks } from './components/Bookmarks';
 import { GrammarChecker } from './components/GrammarChecker';
 import { Profile } from './components/Profile';
 import { PricingModal } from './components/PricingModal';
+import { AdminPanel } from './components/AdminPanel';
 
 const MainContent: React.FC = () => {
-  const { currentView } = useApp();
+  const { currentView, setCurrentView } = useApp();
 
   React.useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
   }, [currentView]);
+
+  // Check URL hash or path for admin access (e.g. #admin)
+  React.useEffect(() => {
+    const handleHash = () => {
+      if (window.location.hash === '#admin' || window.location.pathname.includes('/admin')) {
+        setCurrentView('admin');
+      }
+    };
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, [setCurrentView]);
 
   return (
     <main style={{ minHeight: '100vh', paddingTop: '64px', paddingBottom: '85px' }}>
@@ -32,6 +45,7 @@ const MainContent: React.FC = () => {
       {currentView === 'grammar_checker' && <GrammarChecker />}
       {currentView === 'bookmarks' && <Bookmarks />}
       {currentView === 'profile' && <Profile />}
+      {currentView === 'admin' && <AdminPanel />}
     </main>
   );
 };

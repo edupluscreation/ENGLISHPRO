@@ -33,7 +33,8 @@ export const Profile: React.FC = () => {
     verifyAndLoginPhone,
     logoutPhone,
     userName,
-    setUserName
+    setUserName,
+    setCurrentView
   } = useApp();
 
   const [isEditingName, setIsEditingName] = useState(false);
@@ -652,6 +653,27 @@ export const Profile: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* ─── 6. FOOTER & ADMIN ACCESS ─── */}
+      <div style={{ textAlign: 'center', marginTop: '16px', paddingBottom: '20px' }}>
+        <button
+          onClick={() => setCurrentView('admin')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-dim)',
+            fontSize: '11px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            opacity: 0.6,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}
+        >
+          <span>🔒 Master Admin Console</span>
+        </button>
+      </div>
 
     </div>
   );
