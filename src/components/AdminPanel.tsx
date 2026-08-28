@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useApp, GOOGLE_SHEET_API_URL } from '../context/AppContext';
 import type { Question, QuestionTopic } from '../types/quiz';
+
+export const GOOGLE_SHEET_API_URL = typeof window !== 'undefined'
+  ? (localStorage.getItem('ssc_sheet_api_url') || 'https://script.google.com/macros/s/AKfycbxSTihxwKdh0uXkTjqDiG9MSoBtJB9hAUNdV35s-fYFh1w5hlK8MEsutTfaz6sxnu-BxQ/exec')
+  : 'https://script.google.com/macros/s/AKfycbxSTihxwKdh0uXkTjqDiG9MSoBtJB9hAUNdV35s-fYFh1w5hlK8MEsutTfaz6sxnu-BxQ/exec';
+
 import { 
   ShieldCheck, 
   KeyRound, 
@@ -30,8 +34,6 @@ interface SheetUser {
 }
 
 export const AdminPanel: React.FC = () => {
-  const { setCurrentView, unlockProMembership } = useApp();
-  
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return sessionStorage.getItem('ssc_admin_logged_in') === 'true';
