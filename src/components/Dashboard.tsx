@@ -57,7 +57,11 @@ export const Dashboard: React.FC = () => {
     mistakeQuestionIds,
     bookmarkedQuestionIds,
     streakDays,
-    xpPoints
+    xpPoints,
+    userName,
+    userPhone,
+    isProUser,
+    openPricingModal
   } = useApp();
 
   const [activeExamFilter, setActiveExamFilter] = useState<string>('ALL');
@@ -72,15 +76,16 @@ export const Dashboard: React.FC = () => {
   // Read Live Announcement Banner from Admin
   const bannerRaw = typeof window !== 'undefined' ? localStorage.getItem('ssc_announcement_banner') : null;
   const banner = bannerRaw ? JSON.parse(bannerRaw) : null;
-  const { openPricingModal } = useApp();
 
   return (
-    <div style={{ maxWidth: '680px', margin: '0 auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ maxWidth: '680px', margin: '0 auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '18px', width: '100%', boxSizing: 'border-box' }}>
       
       {/* ─── LIVE ADMIN ANNOUNCEMENT BANNER ─── */}
       {banner && banner.isActive && banner.text && (
         <div 
-          onClick={openPricingModal}
+          onClick={() => {
+            if (!isProUser) openPricingModal();
+          }}
           style={{
             padding: '12px 16px',
             borderRadius: '14px',
@@ -94,7 +99,7 @@ export const Dashboard: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '12px',
-            cursor: 'pointer',
+            cursor: isProUser ? 'default' : 'pointer',
             boxShadow: '0 4px 15px rgba(79, 70, 229, 0.3)'
           }}
         >
@@ -102,7 +107,7 @@ export const Dashboard: React.FC = () => {
             <span>📢</span>
             <span>{banner.text}</span>
           </div>
-          {banner.actionText && (
+          {banner.actionText && !isProUser && (
             <span style={{
               background: 'rgba(255, 255, 255, 0.25)',
               padding: '4px 10px',
@@ -117,61 +122,79 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* ─── 1. HERO SPOTLIGHT CARD (Stitch Style) ─── */}
+      {/* ─── 1. HERO ONBOARDING & SPOTLIGHT CARD ─── */}
       <div style={{
-        background: 'var(--bg-surface)',
+        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.05) 100%)',
         border: '1px solid var(--border-color)',
-        borderRadius: '16px',
-        padding: '22px 20px',
+        borderRadius: '20px',
+        padding: '20px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '16px'
+        gap: '16px',
+        boxSizing: 'border-box'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '4px 10px',
-            borderRadius: '9999px',
-            background: 'var(--bg-surface-elevated)',
-            border: '1px solid var(--border-color)',
-            fontSize: '11px',
-            fontWeight: 700,
-            color: 'var(--text-dim)'
-          }}>
-            <Zap size={13} color="var(--accent)" />
-            <span>SSC English Master • 18,000+ PYQs (2018–2026)</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <img
+            src="/app_icon_mobile.jpg"
+            alt="SSC English Pro Official Logo"
+            style={{
+              width: '54px',
+              height: '54px',
+              borderRadius: '14px',
+              objectFit: 'cover',
+              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)',
+              flexShrink: 0
+            }}
+          />
+          <div style={{ minWidth: 0 }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 3px 0', lineHeight: 1.2 }}>
+              {userName && userName !== 'SSC Aspirant' ? `Namaste, ${userName} 👋` : 'SSC English PRO 🎯'}
+            </h2>
+            <p style={{ fontSize: '12px', color: 'var(--text-dim)', margin: 0, lineHeight: 1.4 }}>
+              18,000+ PYQs • 120 Golden Rules • AI Scanner
+            </p>
           </div>
         </div>
 
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.2, margin: '0 0 6px 0' }}>
-            Master SSC English
-          </h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
-            Previous year questions, live AI grammar explanations & 120 golden rules.
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button
             onClick={() => startCustomQuiz('Daily Mock Speed Test', QUESTIONS_DATA.slice(0, 10), 5)}
             className="btn-primary"
-            style={{ padding: '11px 22px', fontSize: '14px', fontWeight: 800 }}
+            style={{ padding: '10px 16px', fontSize: '13px', fontWeight: 800, borderRadius: '10px' }}
           >
-            <Play size={15} fill="#ffffff" />
+            <Play size={14} fill="#ffffff" />
             <span>Start Daily Mock</span>
           </button>
 
           <button
             onClick={() => setCurrentView('grammar_checker')}
             className="btn-secondary"
-            style={{ padding: '11px 18px', fontSize: '14px', fontWeight: 700 }}
+            style={{ padding: '10px 14px', fontSize: '13px', fontWeight: 700, borderRadius: '10px' }}
           >
-            <Sparkles size={15} color="var(--primary)" />
-            <span>AI Checker</span>
+            <Sparkles size={14} color="var(--primary)" />
+            <span>AI Scanner</span>
           </button>
+
+          {!userPhone && (
+            <button
+              onClick={() => setCurrentView('profile')}
+              style={{
+                padding: '9px 12px',
+                borderRadius: '10px',
+                border: '1px solid var(--border-color)',
+                background: 'var(--bg-surface)',
+                color: 'var(--text-main)',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+            >
+              <span>📱 Restore Pass</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -75,10 +75,19 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | null>(null);
 
-// Google Apps Script Webhook URL (Replace with your deployed Web App URL)
-export const GOOGLE_SHEET_API_URL = typeof window !== 'undefined' && localStorage.getItem('ssc_sheet_api_url')
-  ? localStorage.getItem('ssc_sheet_api_url')!
-  : 'https://script.google.com/macros/s/AKfycbwNfCto91EVrMTYgov2r4A5yavFfxQPI2DHc023uew2RTFb0qgMIQJrTloqe5cemERvxA/exec';
+const DEFAULT_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwNfCto91EVrMTYgov2r4A5yavFfxQPI2DHc023uew2RTFb0qgMIQJrTloqe5cemERvxA/exec';
+
+export const getActiveSheetUrl = (): string => {
+  if (typeof window === 'undefined') return DEFAULT_SHEET_URL;
+  const saved = localStorage.getItem('ssc_sheet_api_url');
+  if (saved && saved.includes('AKfycbwNfCto91EVrMTYgov2r4A5yavFfxQPI2DHc023uew2RTFb0qgMIQJrTloqe5cemERvxA')) {
+    return saved;
+  }
+  localStorage.setItem('ssc_sheet_api_url', DEFAULT_SHEET_URL);
+  return DEFAULT_SHEET_URL;
+};
+
+export const GOOGLE_SHEET_API_URL = DEFAULT_SHEET_URL;
 
 const STORAGE_KEYS = {
   THEME: 'ssc_quiz_theme',
@@ -96,10 +105,16 @@ const STORAGE_KEYS = {
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentView, setCurrentViewRaw] = useState<AppView>(() => {
-    return (sessionStorage.getItem(STORAGE_KEYS.CURRENT_VIEW) as AppView) || 'dashboard';
+    const saved = typeof window !== 'undefined' ? sessionStorage.getItem(STORAGE_KEYS.CURRENT_VIEW) as AppView : null;
+    if (saved === 'admin') return 'dashboard';
+    return saved || 'dashboard';
   });
 
   const setCurrentView = (view: AppView) => {
+    if (view === 'admin') {
+      setCurrentViewRaw('dashboard');
+      return;
+    }
     setCurrentViewRaw(view);
     sessionStorage.setItem(STORAGE_KEYS.CURRENT_VIEW, view);
   };

@@ -192,9 +192,22 @@ h4, h5, h6 {
   color: var(--text-main);
 }
 
-p, span, div, li, strong, b, em {
-  word-break: break-word;
+p, span, div, li, strong, b, em, h1, h2, h3, h4, h5, h6, a, button {
   overflow-wrap: break-word;
+  word-break: normal;
+}
+
+html, body, #root, main {
+  max-width: 100vw;
+  width: 100%;
+  overflow-x: hidden !important;
+  box-sizing: border-box;
+}
+
+main {
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
 }
 
 code, pre {

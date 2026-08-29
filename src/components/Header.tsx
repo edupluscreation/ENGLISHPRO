@@ -64,32 +64,31 @@ export const Header: React.FC = () => {
           {/* App Logo & Title */}
           <div 
             onClick={() => setCurrentView('dashboard')}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexShrink: 0 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flexShrink: 1, minWidth: 0, overflow: 'hidden' }}
           >
-            <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              background: 'var(--primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              flexShrink: 0
-            }}>
-              <Grid size={20} />
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
-                <h1 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.1, margin: 0 }}>
+            <img
+              src="/app_icon_mobile.jpg"
+              alt="SSC English Pro"
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '9px',
+                objectFit: 'cover',
+                flexShrink: 0,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.4)'
+              }}
+            />
+            <div style={{ minWidth: 0, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <h1 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.1, margin: 0, whiteSpace: 'nowrap' }}>
                   SSC English
                 </h1>
-                <span className="badge badge-primary" style={{ fontSize: '10px', padding: '2px 6px', fontWeight: 700 }}>
+                <span className="badge badge-primary" style={{ fontSize: '9px', padding: '1px 5px', fontWeight: 800 }}>
                   PRO
                 </span>
               </div>
-              <p style={{ fontSize: '12px', color: 'var(--text-dim)', margin: 0, marginTop: '2px', fontWeight: 500 }}>
-                18,000+ Questions • 120 Golden Rules
+              <p style={{ fontSize: '11px', color: 'var(--text-dim)', margin: 0, marginTop: '2px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                18k PYQs • 120 Rules • AI
               </p>
             </div>
           </div>

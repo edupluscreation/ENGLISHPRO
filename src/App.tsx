@@ -12,33 +12,16 @@ import { Bookmarks } from './components/Bookmarks';
 import { GrammarChecker } from './components/GrammarChecker';
 import { Profile } from './components/Profile';
 import { PricingModal } from './components/PricingModal';
-import { AdminPanel } from './components/AdminPanel';
 
 const MainContent: React.FC = () => {
-  const { currentView, setCurrentView } = useApp();
+  const { currentView } = useApp();
 
   React.useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
   }, [currentView]);
 
-  // Check URL hash or path for admin access (e.g. #admin)
-  React.useEffect(() => {
-    const handleHash = () => {
-      if (window.location.hash === '#admin' || window.location.pathname.includes('/admin')) {
-        setCurrentView('admin');
-      }
-    };
-    handleHash();
-    window.addEventListener('hashchange', handleHash);
-    return () => window.removeEventListener('hashchange', handleHash);
-  }, [setCurrentView]);
-
-  if (currentView === 'admin') {
-    return <AdminPanel />;
-  }
-
   return (
-    <main style={{ minHeight: '100vh', paddingTop: '64px', paddingBottom: '85px' }}>
+    <main style={{ minHeight: '100vh', paddingTop: '64px', paddingBottom: '85px', width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
       {currentView === 'dashboard' && <Dashboard />}
       {currentView === 'topic_sets' && <TopicSets />}
       {currentView === 'quiz' && <QuizEngine />}
@@ -56,7 +39,7 @@ const MainContent: React.FC = () => {
 export const App: React.FC = () => {
   return (
     <AppProvider>
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
         <Header />
         <MainContent />
         <PricingModal />
