@@ -7,14 +7,25 @@ export type QuestionTopic =
   | 'synonyms'
   | 'antonyms'
   | 'misspelled'
-  | 'cloze_test';
+  | 'cloze_test'
+  | (string & {});
+
+export interface CustomTopic {
+  id: string;
+  title: string;
+  desc: string;
+  badge?: string;
+  icon?: string;
+  color?: string;
+  createdAt?: string;
+}
 
 export interface Question {
   id: string;
   topic: QuestionTopic;
   questionText: string;
   options: string[];
-  correctAnswer: number; // 0-indexed
+  correctAnswer: number; // 0-indexed (0=A, 1=B, 2=C, 3=D)
   explanation: string;
   grammarRule?: string;
   examTag?: string; // e.g. "SSC CGL 2024", "SSC CHSL 2025"

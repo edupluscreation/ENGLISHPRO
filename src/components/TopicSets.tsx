@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import type { QuestionTopic } from '../types/quiz';
-import { TOPIC_DETAILS, QUESTIONS_DATA } from '../data/questions';
+import { getAllTopics, getAllQuestions } from '../data/questions';
 import { 
   ChevronLeft, 
   Play, 
@@ -11,7 +11,8 @@ import {
   Layers, 
   ArrowRight,
   Lock,
-  Sparkles
+  Sparkles,
+  BookOpen
 } from 'lucide-react';
 import {
   FlatIconSpotError,
@@ -25,7 +26,7 @@ import {
   FlatIconMisspelled
 } from './FlatIcons';
 
-const TOPIC_ICONS: Record<QuestionTopic, { icon: React.ReactNode; color: string; bg: string }> = {
+const TOPIC_ICONS: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
   spot_error: { icon: <FlatIconSpotError size={28} />, color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' },
   sentence_improvement: { icon: <FlatIconSentenceImprovement size={28} />, color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)' },
   fill_blanks: { icon: <FlatIconFillBlanks size={28} />, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },
@@ -49,7 +50,9 @@ export const TopicSets: React.FC = () => {
     FREE_TESTS_LIMIT 
   } = useApp();
 
-  const allTopics = Object.keys(TOPIC_DETAILS) as QuestionTopic[];
+  const allTopicsMap = getAllTopics();
+  const allTopics = Object.keys(allTopicsMap);
+  const allQuestionsData = getAllQuestions();
 
   // ══════════════════════════════════════════════════════════════════════════
   // VIEW 1: TOPIC DIRECTORY (When no specific topic is selected)
@@ -61,7 +64,7 @@ export const TopicSets: React.FC = () => {
         <div style={{ marginBottom: '32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <span className="badge badge-primary">OFFICIAL SSC PYQ HUB</span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>18,000+ QUESTIONS AVAILABLE</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{allQuestionsData.length.toLocaleString()}+ QUESTIONS AVAILABLE</span>
           </div>
           <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)', marginBottom: '8px', letterSpacing: '-0.5px' }}>
             PYQ Practice Topics
@@ -78,11 +81,15 @@ export const TopicSets: React.FC = () => {
           gap: '20px'
         }}>
           {allTopics.map(tKey => {
-            const detail = TOPIC_DETAILS[tKey];
-            const iconConfig = TOPIC_ICONS[tKey];
-            const topicQs = QUESTIONS_DATA.filter(q => q.topic === tKey);
+            const detail = allTopicsMap[tKey] || { title: tKey, desc: 'Practice questions.', badge: 'TOPIC', color: '#8b5cf6' };
+            const iconConfig = TOPIC_ICONS[tKey] || { 
+              icon: <BookOpen size={28} />, 
+              color: detail.color || '#8b5cf6', 
+              bg: `${detail.color || '#8b5cf6'}18` 
+            };
+            const topicQs = allQuestionsData.filter(q => q.topic === tKey);
             const setSize = tKey === 'cloze_test' ? 25 : 30;
-            const setTotal = Math.ceil(topicQs.length / setSize);
+            const setTotal = Math.max(1, Math.ceil(topicQs.length / setSize));
 
             // Count completed attempts for this topic
             const completedAttempts = quizAttempts.filter(a => a.topic === tKey).length;
@@ -90,7 +97,7 @@ export const TopicSets: React.FC = () => {
             return (
               <div
                 key={tKey}
-                onClick={() => openTopicSets(tKey)}
+                onClick={() => openTopicSets(tKey as any)}
                 className="card"
                 style={{
                   padding: '24px',
@@ -118,17 +125,22 @@ export const TopicSets: React.FC = () => {
                     }}>
                       {iconConfig.icon}
                     </div>
-
-                    <span className="badge badge-primary" style={{ fontWeight: 700 }}>
+                    <span 
+                      className="badge" 
+                      style={{ 
+                        background: iconConfig.bg, 
+                        color: iconConfig.color,
+                        borderColor: `${iconConfig.color}40`
+                      }}
+                    >
                       {detail.badge}
                     </span>
                   </div>
 
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
                     {detail.title}
                   </h3>
-
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5, margin: 0 }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: '1.5', margin: 0 }}>
                     {detail.desc}
                   </p>
                 </div>
@@ -138,26 +150,41 @@ export const TopicSets: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    paddingTop: '14px',
+                    paddingTop: '16px',
                     borderTop: '1px solid var(--border-color)',
-                    fontSize: '0.8rem',
-                    color: 'var(--text-muted)'
+                    fontSize: '0.85rem'
                   }}>
                     <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
-                      {setTotal} Test Sets
+                      {topicQs.length.toLocaleString()} Questions
                     </span>
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      {setTotal} Sets ({setSize} Qs/Set)
+                    </span>
+                  </div>
 
-                    {completedAttempts > 0 ? (
-                      <span style={{ color: 'var(--success)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <CheckCircle2 size={14} />
-                        {completedAttempts} Attempted
-                      </span>
-                    ) : (
-                      <span style={{ color: 'var(--primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        Start Practicing
-                        <ArrowRight size={14} />
-                      </span>
-                    )}
+                  <div style={{
+                    marginTop: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <span style={{ 
+                      fontSize: '0.78rem', 
+                      color: completedAttempts > 0 ? 'var(--success)' : 'var(--text-muted)',
+                      fontWeight: 600
+                    }}>
+                      {completedAttempts > 0 ? `✓ ${completedAttempts} Sets Attempted` : 'Not Started'}
+                    </span>
+                    <span style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '4px', 
+                      color: 'var(--primary)', 
+                      fontWeight: 700,
+                      fontSize: '0.85rem' 
+                    }}>
+                      Practice Now <ArrowRight size={14} />
+                    </span>
                   </div>
                 </div>
               </div>
@@ -171,12 +198,12 @@ export const TopicSets: React.FC = () => {
   // ══════════════════════════════════════════════════════════════════════════
   // VIEW 2: TESTS LIST FOR THE SELECTED TOPIC
   // ══════════════════════════════════════════════════════════════════════════
-  const topicDetails = TOPIC_DETAILS[selectedTopic];
-  const allTopicQuestions = QUESTIONS_DATA.filter(q => q.topic === selectedTopic);
+  const topicDetails = allTopicsMap[selectedTopic] || { title: selectedTopic, desc: 'Practice sets', badge: 'TOPIC' };
+  const allTopicQuestions = allQuestionsData.filter(q => q.topic === selectedTopic);
   const totalQuestions = allTopicQuestions.length;
 
   const SET_SIZE = selectedTopic === 'cloze_test' ? 25 : 30;
-  const totalSets = Math.ceil(totalQuestions / SET_SIZE);
+  const totalSets = Math.max(1, Math.ceil(totalQuestions / SET_SIZE));
 
   // Group questions into sets
   const sets = Array.from({ length: totalSets }, (_, index) => {

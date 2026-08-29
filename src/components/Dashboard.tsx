@@ -69,9 +69,54 @@ export const Dashboard: React.FC = () => {
   const topicsList = Object.keys(TOPIC_DETAILS) as QuestionTopic[];
   const examTagsList = ['ALL', 'SSC CGL', 'SSC CHSL', 'SSC MTS', 'SSC CPO'];
 
+  // Read Live Announcement Banner from Admin
+  const bannerRaw = typeof window !== 'undefined' ? localStorage.getItem('ssc_announcement_banner') : null;
+  const banner = bannerRaw ? JSON.parse(bannerRaw) : null;
+  const { openPricingModal } = useApp();
+
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
+      {/* ─── LIVE ADMIN ANNOUNCEMENT BANNER ─── */}
+      {banner && banner.isActive && banner.text && (
+        <div 
+          onClick={openPricingModal}
+          style={{
+            padding: '12px 16px',
+            borderRadius: '14px',
+            background: banner.type === 'urgent' 
+              ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+              : banner.type === 'alert'
+              ? 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)'
+              : 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            cursor: 'pointer',
+            boxShadow: '0 4px 15px rgba(79, 70, 229, 0.3)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700 }}>
+            <span>📢</span>
+            <span>{banner.text}</span>
+          </div>
+          {banner.actionText && (
+            <span style={{
+              background: 'rgba(255, 255, 255, 0.25)',
+              padding: '4px 10px',
+              borderRadius: '8px',
+              fontSize: '11.5px',
+              fontWeight: 800,
+              whiteSpace: 'nowrap'
+            }}>
+              {banner.actionText} →
+            </span>
+          )}
+        </div>
+      )}
+
       {/* ─── 1. HERO SPOTLIGHT CARD (Stitch Style) ─── */}
       <div style={{
         background: 'var(--bg-surface)',

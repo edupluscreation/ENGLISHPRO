@@ -654,25 +654,76 @@ export const Profile: React.FC = () => {
         </div>
       )}
 
-      {/* ─── 6. FOOTER & ADMIN ACCESS ─── */}
-      <div style={{ textAlign: 'center', marginTop: '16px', paddingBottom: '20px' }}>
-        <button
-          onClick={() => setCurrentView('admin')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--text-dim)',
-            fontSize: '11px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            opacity: 0.6,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px'
-          }}
-        >
-          <span>🔒 Master Admin Console</span>
-        </button>
+      {/* ─── 6. FOOTER, SUPPORT & ADMIN ACCESS ─── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px', paddingBottom: '20px' }}>
+        
+        {/* Help & Support Buttons */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <a
+            href={`https://wa.me/${(localStorage.getItem('ssc_support_whatsapp') || '919876543210').replace(/[^0-9]/g, '')}?text=Hello%20SSC%20English%20Pro%20Support,%20I%20need%20help.`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              padding: '12px',
+              borderRadius: '12px',
+              background: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              color: '#10b981',
+              fontSize: '12.5px',
+              fontWeight: 700,
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+          >
+            <span>💬 WhatsApp Support</span>
+          </a>
+
+          <a
+            href={localStorage.getItem('ssc_telegram_channel') || 'https://t.me/ssconlineprep'}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              padding: '12px',
+              borderRadius: '12px',
+              background: 'rgba(59, 130, 246, 0.12)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              color: '#3b82f6',
+              fontSize: '12.5px',
+              fontWeight: 700,
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+          >
+            <span>📢 Telegram Community</span>
+          </a>
+        </div>
+
+        {/* Master Admin Button */}
+        <div style={{ textAlign: 'center', marginTop: '6px' }}>
+          <button
+            onClick={() => setCurrentView('admin')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-dim)',
+              fontSize: '11px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              opacity: 0.7,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <span>🔒 Master Admin Console</span>
+          </button>
+        </div>
       </div>
 
     </div>
