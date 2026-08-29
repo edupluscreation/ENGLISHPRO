@@ -81,6 +81,8 @@ export const PricingModal: React.FC = () => {
     setIsProcessing(true);
     setErrorMsg(null);
 
+    const livePrice = parseInt(localStorage.getItem('ssc_admin_pro_price') || '29', 10);
+    const liveDays = parseInt(localStorage.getItem('ssc_admin_plan_days') || '60', 10);
     const razorpayKey = (typeof window !== 'undefined' ? localStorage.getItem('ssc_razorpay_key_id') : '') || 'rzp_test_placeholder_key';
     const merchantName = (typeof window !== 'undefined' ? localStorage.getItem('ssc_razorpay_merchant_name') : '') || 'SSC English Pro';
 
@@ -93,10 +95,9 @@ export const PricingModal: React.FC = () => {
         name: merchantName,
         description: `${liveDays} Days Full Pro Access (18,000+ PYQs, AI Grammar & 120 Rules)`,
         image: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>',
-        handler: function (response: any) {
+        handler: function () {
           setIsProcessing(false);
-          const paymentId = response?.razorpay_payment_id || `RZP_${Date.now()}`;
-          unlockProMembership(liveDays, cleanPhone, paymentId); // Dynamic Days with Phone linking
+          unlockProMembership(liveDays, cleanPhone); // Dynamic Days with Phone linking
           confetti({
             particleCount: 120,
             spread: 80,
