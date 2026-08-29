@@ -15,9 +15,19 @@ import {
   SAMPLE_QUESTIONS_CSV_STRING
 } from '../data/adminData';
 
-export const GOOGLE_SHEET_API_URL = typeof window !== 'undefined'
-  ? (localStorage.getItem('ssc_sheet_api_url') || 'https://script.google.com/macros/s/AKfycbwNfCto91EVrMTYgov2r4A5yavFfxQPI2DHc023uew2RTFb0qgMIQJrTloqe5cemERvxA/exec')
-  : 'https://script.google.com/macros/s/AKfycbwNfCto91EVrMTYgov2r4A5yavFfxQPI2DHc023uew2RTFb0qgMIQJrTloqe5cemERvxA/exec';
+export const DEFAULT_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwNfCto91EVrMTYgov2r4A5yavFfxQPI2DHc023uew2RTFb0qgMIQJrTloqe5cemERvxA/exec';
+
+export const getSheetApiUrl = (): string => {
+  if (typeof window === 'undefined') return DEFAULT_SHEET_URL;
+  const stored = localStorage.getItem('ssc_sheet_api_url');
+  if (!stored || stored.includes('AKfycbz8') || stored.includes('AKfycbyt')) {
+    localStorage.setItem('ssc_sheet_api_url', DEFAULT_SHEET_URL);
+    return DEFAULT_SHEET_URL;
+  }
+  return stored;
+};
+
+export const GOOGLE_SHEET_API_URL = getSheetApiUrl();
 
 import { 
   ShieldCheck, 
@@ -118,6 +128,7 @@ export const AdminPanel: React.FC = () => {
   const [priceSaveMsg, setPriceSaveMsg] = useState('');
 
   // Users State
+  const [sheetUrl, setSheetUrl] = useState<string>(() => getSheetApiUrl());
   const [sheetUsers, setSheetUsers] = useState<SheetUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState('');
@@ -237,9 +248,10 @@ export const AdminPanel: React.FC = () => {
     localStorage.setItem('ssc_admin_orig_price', originalPrice.toString());
     localStorage.setItem('ssc_admin_plan_days', planDays.toString());
     
-    if (GOOGLE_SHEET_API_URL) {
+    const activeUrl = sheetUrl || getSheetApiUrl();
+    if (activeUrl) {
       try {
-        fetch(`${GOOGLE_SHEET_API_URL}?action=updateConfig&proPrice=${proPrice}&origPrice=${originalPrice}&planDays=${planDays}`)
+        fetch(`${activeUrl}?action=updateConfig&proPrice=${proPrice}&origPrice=${originalPrice}&planDays=${planDays}`)
           .catch(() => {});
       } catch (_) {}
     }
@@ -250,14 +262,15 @@ export const AdminPanel: React.FC = () => {
 
   // Users Fetch
   const fetchUsers = async () => {
-    if (!GOOGLE_SHEET_API_URL) {
+    const activeUrl = sheetUrl || getSheetApiUrl();
+    if (!activeUrl) {
       setUserActionMsg('Google Sheet Webhook URL not configured.');
       return;
     }
     setIsLoadingUsers(true);
     setUserActionMsg('');
     try {
-      const res = await fetch(`${GOOGLE_SHEET_API_URL}?action=getUsers`);
+      const res = await fetch(`${activeUrl}?action=getUsers`);
       const data = await res.json();
       if (data && Array.isArray(data.users)) {
         setSheetUsers(data.users);
@@ -283,11 +296,12 @@ export const AdminPanel: React.FC = () => {
   }, [isAuthenticated, activeTab]);
 
   const handleTogglePro = async (phone: string, currentPro: boolean) => {
-    if (!GOOGLE_SHEET_API_URL) return;
+    const activeUrl = sheetUrl || getSheetApiUrl();
+    if (!activeUrl) return;
     setUserActionMsg(`Updating status for ${phone}...`);
     try {
       const targetDays = currentPro ? 0 : planDays;
-      await fetch(`${GOOGLE_SHEET_API_URL}?action=updatePro&phone=${phone}&days=${targetDays}&paymentId=ADMIN_OVERRIDE`);
+      await fetch(`${activeUrl}?action=updatePro&phone=${phone}&days=${targetDays}&paymentId=ADMIN_OVERRIDE`);
       setUserActionMsg(`✅ Pro status updated for ${phone}!`);
       fetchUsers();
     } catch {
@@ -3443,13 +3457,40 @@ export const AdminPanel: React.FC = () => {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-              Google Apps Script Webhook URL:
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 700 }}>
+                Google Apps Script Webhook URL:
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setSheetUrl(DEFAULT_SHEET_URL);
+                  localStorage.setItem('ssc_sheet_api_url', DEFAULT_SHEET_URL);
+                  fetchUsers();
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#818cf8',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <RefreshCw size={13} /> Reset to Verified Webhook URL
+              </button>
+            </div>
             <input
               type="text"
-              defaultValue={GOOGLE_SHEET_API_URL}
-              onChange={(e) => localStorage.setItem('ssc_sheet_api_url', e.target.value.trim())}
+              value={sheetUrl}
+              onChange={(e) => {
+                const val = e.target.value.trim();
+                setSheetUrl(val);
+                localStorage.setItem('ssc_sheet_api_url', val);
+              }}
               style={{
                 width: '100%',
                 padding: '12px',
