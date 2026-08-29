@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SSC English PRO</string>
+    <string name="title_activity_main">SSC English PRO</string>
+    <string name="package_name">com.edupluscreation.englishpro</string>
+    <string name="custom_url_scheme">com.edupluscreation.englishpro</string>
+</resources>
