@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import type { Question, QuestionTopic, CustomTopic, VocabItem, GrammarRuleItem } from '../types/quiz';
+import type { Question, QuestionTopic, CustomTopic, VocabItem } from '../types/quiz';
 import {
   getAllTopics,
   getCustomTopics,
@@ -29,15 +29,10 @@ import {
   Search, 
   RefreshCw, 
   Save, 
-  ArrowLeft, 
   BookOpen, 
-  Sparkles, 
-  Zap, 
   Lock, 
-  Layers, 
   Database, 
   UploadCloud, 
-  FileText, 
   Download, 
   Copy, 
   Trash2, 
@@ -47,20 +42,14 @@ import {
   HelpCircle, 
   Check, 
   Eye, 
-  Sliders, 
   ChevronDown, 
   ChevronUp,
   BarChart3,
-  TrendingUp,
   Megaphone,
   Ticket,
   BookMarked,
   Settings,
-  MessageCircle,
-  Smartphone,
-  CheckSquare,
-  Globe,
-  Radio
+  ArrowLeft
 } from 'lucide-react';
 
 interface SheetUser {
@@ -90,8 +79,6 @@ interface CouponItem {
   code: string;
   discountType: 'percentage' | 'flat';
   discountValue: number;
-  minPrice?: number;
-  expiryDate?: string;
   isActive: boolean;
 }
 
@@ -100,7 +87,6 @@ interface AnnouncementBanner {
   text: string;
   type: 'promo' | 'alert' | 'info' | 'urgent';
   actionText?: string;
-  actionLink?: string;
 }
 
 export const AdminPanel: React.FC = () => {
@@ -149,7 +135,7 @@ export const AdminPanel: React.FC = () => {
     setAllQuestionsCount(TOTAL_BASE_QUESTIONS + cq.length);
   };
 
-  // ─── SINGLE QUESTION STATE ───
+  // Single Question State
   const [uploadMode, setUploadMode] = useState<'bulk' | 'single'>('bulk');
   const [qTopic, setQTopic] = useState<string>('spot_error');
   const [qText, setQText] = useState('');
@@ -164,7 +150,7 @@ export const AdminPanel: React.FC = () => {
   const [qDifficulty, setQDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
   const [qSuccessMsg, setQSuccessMsg] = useState('');
 
-  // ─── BULK UPLOAD STATE ───
+  // Bulk Upload State
   const [bulkTargetTopic, setBulkTargetTopic] = useState<string>('auto');
   const [bulkInputText, setBulkInputText] = useState<string>('');
   const [bulkInputFormat, setBulkInputFormat] = useState<'json' | 'csv'>('json');
@@ -174,7 +160,7 @@ export const AdminPanel: React.FC = () => {
   const [showGuide, setShowGuide] = useState<boolean>(false);
   const [bulkImportSuccessMsg, setBulkImportSuccessMsg] = useState<string>('');
 
-  // ─── CUSTOM TOPIC CREATOR STATE ───
+  // Custom Topic Creator State
   const [newTopicId, setNewTopicId] = useState('');
   const [newTopicTitle, setNewTopicTitle] = useState('');
   const [newTopicDesc, setNewTopicDesc] = useState('');
@@ -182,11 +168,11 @@ export const AdminPanel: React.FC = () => {
   const [newTopicColor, setNewTopicColor] = useState('#8b5cf6');
   const [topicSaveMsg, setTopicSaveMsg] = useState('');
 
-  // ─── LIBRARY SEARCH / FILTER STATE ───
+  // Library Search / Filter State
   const [libTopicFilter, setLibTopicFilter] = useState<string>('all');
   const [libSearchQuery, setLibSearchQuery] = useState<string>('');
 
-  // ─── COUPONS & PROMOS STATE ───
+  // Coupons State
   const [couponsList, setCouponsList] = useState<CouponItem[]>(() => {
     const saved = localStorage.getItem('ssc_discount_coupons');
     return saved ? JSON.parse(saved) : [
@@ -199,7 +185,7 @@ export const AdminPanel: React.FC = () => {
   const [newCouponValue, setNewCouponValue] = useState<number>(30);
   const [couponMsg, setCouponMsg] = useState('');
 
-  // ─── ANNOUNCEMENT BANNER STATE ───
+  // Announcement Banner State
   const [bannerConfig, setBannerConfig] = useState<AnnouncementBanner>(() => {
     const saved = localStorage.getItem('ssc_announcement_banner');
     return saved ? JSON.parse(saved) : {
@@ -211,7 +197,7 @@ export const AdminPanel: React.FC = () => {
   });
   const [bannerSaveMsg, setBannerSaveMsg] = useState('');
 
-  // ─── VOCAB & GRAMMAR CMS STATE ───
+  // Vocab CMS State
   const [cmsVocabWord, setCmsVocabWord] = useState('');
   const [cmsVocabMeaning, setCmsVocabMeaning] = useState('');
   const [cmsVocabHindi, setCmsVocabHindi] = useState('');
@@ -220,7 +206,7 @@ export const AdminPanel: React.FC = () => {
   const [cmsVocabTag, setCmsVocabTag] = useState('SSC CGL 2024');
   const [cmsSuccessMsg, setCmsSuccessMsg] = useState('');
 
-  // ─── GLOBAL PLATFORM SETTINGS ───
+  // Global Platform Settings
   const [supportPhone, setSupportPhone] = useState(() => localStorage.getItem('ssc_support_whatsapp') || '+91 9876543210');
   const [telegramLink, setTelegramLink] = useState(() => localStorage.getItem('ssc_telegram_channel') || 'https://t.me/ssconlineprep');
   const [freeTestsLimit, setFreeTestsLimit] = useState(() => parseInt(localStorage.getItem('ssc_free_tests_limit') || '2', 10));
@@ -228,7 +214,7 @@ export const AdminPanel: React.FC = () => {
   const [newPinInput, setNewPinInput] = useState('');
   const [settingsMsg, setSettingsMsg] = useState('');
 
-  // ─── AUTH HANDLERS ───
+  // Auth Handlers
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (pinInput === adminPin || pinInput === '8899' || pinInput === '1234') {
@@ -245,7 +231,7 @@ export const AdminPanel: React.FC = () => {
     sessionStorage.removeItem('ssc_admin_logged_in');
   };
 
-  // ─── PRICING SAVE ───
+  // Pricing Save
   const handleSavePricing = () => {
     localStorage.setItem('ssc_admin_pro_price', proPrice.toString());
     localStorage.setItem('ssc_admin_orig_price', originalPrice.toString());
@@ -262,7 +248,7 @@ export const AdminPanel: React.FC = () => {
     setTimeout(() => setPriceSaveMsg(''), 3000);
   };
 
-  // ─── USERS FETCH ───
+  // Users Fetch
   const fetchUsers = async () => {
     if (!GOOGLE_SHEET_API_URL) {
       setUserActionMsg('Google Sheet Webhook URL not configured.');
@@ -308,7 +294,7 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
-  // ─── SINGLE QUESTION ADD ───
+  // Single Question Add
   const handleAddSingleQuestion = () => {
     if (!qText.trim() || !optA.trim() || !optB.trim() || !optC.trim() || !optD.trim()) {
       alert('Please fill question text and all 4 options.');
@@ -336,7 +322,6 @@ export const AdminPanel: React.FC = () => {
     setQSuccessMsg(`🎉 Question added to ${topicsMap[qTopic]?.title || qTopic} successfully!`);
     setTimeout(() => setQSuccessMsg(''), 4000);
 
-    // Reset Form
     setQText('');
     setOptA('');
     setOptB('');
@@ -346,7 +331,7 @@ export const AdminPanel: React.FC = () => {
     setQHinExpl('');
   };
 
-  // ─── BULK PARSER ───
+  // Bulk Parser
   const parseBulkContent = (text: string, format: 'json' | 'csv', targetTopic: string) => {
     setBulkParseError('');
     if (!text.trim()) {
@@ -585,7 +570,7 @@ export const AdminPanel: React.FC = () => {
     setTimeout(() => setCopySuccess(''), 2500);
   };
 
-  // ─── TOPIC ACTIONS ───
+  // Topic Actions
   const handleCreateTopic = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanId = newTopicId.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
@@ -620,7 +605,7 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
-  // ─── LIBRARY ACTIONS ───
+  // Library Actions
   const filteredLibraryQuestions = useMemo(() => {
     return customQuestionsList.filter(q => {
       const matchTopic = libTopicFilter === 'all' || q.topic === libTopicFilter;
@@ -646,7 +631,7 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
-  // ─── COUPONS ACTIONS ───
+  // Coupons Actions
   const handleAddCoupon = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCode = newCouponCode.trim().toUpperCase();
@@ -681,14 +666,14 @@ export const AdminPanel: React.FC = () => {
     localStorage.setItem('ssc_discount_coupons', JSON.stringify(updated));
   };
 
-  // ─── ANNOUNCEMENT SAVE ───
+  // Announcement Save
   const handleSaveBanner = () => {
     localStorage.setItem('ssc_announcement_banner', JSON.stringify(bannerConfig));
     setBannerSaveMsg('📢 Announcement banner updated and published live!');
     setTimeout(() => setBannerSaveMsg(''), 3000);
   };
 
-  // ─── VOCAB ITEM ADD ───
+  // Vocab Item Add
   const handleAddVocab = (e: React.FormEvent) => {
     e.preventDefault();
     if (!cmsVocabWord.trim() || !cmsVocabMeaning.trim()) {
@@ -719,7 +704,7 @@ export const AdminPanel: React.FC = () => {
     setTimeout(() => setCmsSuccessMsg(''), 3500);
   };
 
-  // ─── SETTINGS SAVE ───
+  // Settings Save
   const handleSaveSettings = () => {
     localStorage.setItem('ssc_support_whatsapp', supportPhone.trim());
     localStorage.setItem('ssc_telegram_channel', telegramLink.trim());
@@ -736,7 +721,7 @@ export const AdminPanel: React.FC = () => {
     setTimeout(() => setSettingsMsg(''), 3000);
   };
 
-  // ─── FULL BACKUP EXPORT ───
+  // Full Backup Export
   const handleExportFullPlatformBackup = () => {
     const fullBackup = {
       exportedAt: new Date().toISOString(),
@@ -859,16 +844,6 @@ export const AdminPanel: React.FC = () => {
               Unlock Admin Console
             </button>
           </form>
-
-          <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border-color, #1f2937)' }}>
-            <a 
-              href="#" 
-              onClick={(e) => { e.preventDefault(); window.location.hash = ''; window.location.reload(); }}
-              style={{ fontSize: '12px', color: 'var(--text-dim, #9ca3af)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-            >
-              <ArrowLeft size={14} /> Back to Student Dashboard
-            </a>
-          </div>
         </div>
       </div>
     );
@@ -890,7 +865,7 @@ export const AdminPanel: React.FC = () => {
       color: 'var(--text-main, #fff)',
       fontFamily: 'inherit'
     }}>
-      {/* ─── TOP HEADER BAR ─── */}
+      {/* Top Header Bar */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -919,7 +894,7 @@ export const AdminPanel: React.FC = () => {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <h1 style={{ fontSize: '20px', fontWeight: 800, margin: 0 }}>
-                SSC English Pro • Master Admin
+                SSC English Pro • Master Admin Console
               </h1>
               <span style={{
                 background: 'rgba(16, 185, 129, 0.15)',
@@ -958,26 +933,6 @@ export const AdminPanel: React.FC = () => {
             <Download size={14} /> Full Backup JSON
           </button>
 
-          <a
-            href="#"
-            onClick={(e) => { e.preventDefault(); window.location.hash = ''; window.location.reload(); }}
-            style={{
-              padding: '9px 15px',
-              borderRadius: '10px',
-              border: '1px solid var(--border-color, #374151)',
-              background: 'transparent',
-              color: 'var(--text-main, #fff)',
-              fontSize: '12.5px',
-              fontWeight: 600,
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <ArrowLeft size={15} /> Student App
-          </a>
-
           <button
             onClick={handleLogout}
             style={{
@@ -994,12 +949,12 @@ export const AdminPanel: React.FC = () => {
               gap: '6px'
             }}
           >
-            <Lock size={14} /> Lock
+            <Lock size={14} /> Lock Console
           </button>
         </div>
       </div>
 
-      {/* ─── NAVIGATION TABS ─── */}
+      {/* Navigation Tabs */}
       <div style={{
         display: 'flex',
         gap: '8px',
@@ -1014,7 +969,7 @@ export const AdminPanel: React.FC = () => {
           { id: 'library', label: 'Question Library', icon: <Database size={17} /> },
           { id: 'coupons', label: 'Promo Coupons', icon: <Ticket size={17} />, badge: `${couponsList.filter(c => c.isActive).length}` },
           { id: 'announcements', label: 'Announcements Banner', icon: <Megaphone size={17} />, badge: bannerConfig.isActive ? 'LIVE' : undefined },
-          { id: 'content_cms', label: 'Vocab & Rules CMS', icon: <BookMarked size={17} /> },
+          { id: 'content_cms', label: 'Vocab Bank CMS', icon: <BookMarked size={17} /> },
           { id: 'pricing', label: 'Pricing & Plans', icon: <DollarSign size={17} /> },
           { id: 'users', label: 'Students CRM', icon: <Users size={17} /> },
           { id: 'settings', label: 'Platform Settings', icon: <Settings size={17} /> }
@@ -1059,12 +1014,9 @@ export const AdminPanel: React.FC = () => {
         ))}
       </div>
 
-      {/* ═══════════════════════════════════════════
-          TAB 1: ANALYTICS & REVENUE DASHBOARD
-         ═══════════════════════════════════════════ */}
+      {/* ─── TAB 1: ANALYTICS & REVENUE DASHBOARD ─── */}
       {activeTab === 'analytics' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* Key Metric Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
             <div style={{
               background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%)',
@@ -1139,7 +1091,6 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Actions Bar */}
           <div style={{
             background: 'var(--bg-surface, #111827)',
             border: '1px solid var(--border-color, #1f2937)',
@@ -1234,12 +1185,9 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════
-          TAB 2: QUESTION UPLOADER (SINGLE & BULK)
-         ═══════════════════════════════════════════ */}
+      {/* ─── TAB 2: QUESTION UPLOADER (SINGLE & BULK) ─── */}
       {activeTab === 'questions' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
           <div style={{
             background: 'var(--bg-surface, #111827)',
             border: '1px solid var(--border-color, #1f2937)',
@@ -1306,11 +1254,9 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* ─── BULK UPLOAD MODE ─── */}
+          {/* BULK UPLOAD MODE */}
           {uploadMode === 'bulk' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
-              {/* Sample Templates Card */}
               <div style={{
                 background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%)',
                 border: '1px solid rgba(99, 102, 241, 0.3)',
@@ -1469,7 +1415,6 @@ export const AdminPanel: React.FC = () => {
                 )}
               </div>
 
-              {/* Upload Form Box */}
               <div style={{
                 background: 'var(--bg-surface, #111827)',
                 border: '1px solid var(--border-color, #1f2937)',
@@ -1770,12 +1715,11 @@ export const AdminPanel: React.FC = () => {
                     </div>
                   </div>
                 )}
-
               </div>
             </div>
           )}
 
-          {/* ─── SINGLE QUESTION MODE ─── */}
+          {/* SINGLE QUESTION MODE */}
           {uploadMode === 'single' && (
             <div style={{
               background: 'var(--bg-surface, #111827)',
@@ -2026,17 +1970,14 @@ export const AdminPanel: React.FC = () => {
                   boxShadow: '0 4px 14px rgba(79, 70, 229, 0.4)'
                 }}
               >
-                <PlusCircle size={18} /> Save & Publish Question to App
+                <PlusCircle size={18} /> Save & Publish Question
               </button>
             </div>
           )}
-
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════
-          TAB 3: TOPIC MANAGER
-         ═══════════════════════════════════════════ */}
+      {/* ─── TAB 3: TOPIC MANAGER ─── */}
       {activeTab === 'topics' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div style={{
@@ -2053,7 +1994,7 @@ export const AdminPanel: React.FC = () => {
                 Add New Custom Topic
               </h2>
               <p style={{ fontSize: '13px', color: 'var(--text-dim, #9ca3af)', margin: 0 }}>
-                Create new subject modules (e.g. *Para Jumbles*, *Reading Comprehension*, *Voice Change*). These will appear on the Student Topic Sets screen automatically.
+                Create new subject modules (e.g. *Para Jumbles*, *Reading Comprehension*, *Voice Change*).
               </p>
             </div>
 
@@ -2102,7 +2043,7 @@ export const AdminPanel: React.FC = () => {
 
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-                    Topic Title (Display Name): *
+                    Topic Title: *
                   </label>
                   <input
                     type="text"
@@ -2311,9 +2252,7 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════
-          TAB 4: QUESTION LIBRARY
-         ═══════════════════════════════════════════ */}
+      {/* ─── TAB 4: QUESTION LIBRARY ─── */}
       {activeTab === 'library' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{
@@ -2336,36 +2275,34 @@ export const AdminPanel: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => {
-                  if (libTopicFilter !== 'all') {
-                    handleClearTopicCustomQuestions(libTopicFilter);
-                  } else {
-                    if (window.confirm('Delete ALL custom questions across all topics?')) {
-                      localStorage.removeItem('ssc_custom_questions');
-                      refreshData();
-                    }
+            <button
+              onClick={() => {
+                if (libTopicFilter !== 'all') {
+                  handleClearTopicCustomQuestions(libTopicFilter);
+                } else {
+                  if (window.confirm('Delete ALL custom questions across all topics?')) {
+                    localStorage.removeItem('ssc_custom_questions');
+                    refreshData();
                   }
-                }}
-                disabled={customQuestionsList.length === 0}
-                style={{
-                  padding: '9px 16px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  background: 'rgba(239, 68, 68, 0.15)',
-                  color: '#ef4444',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <Trash2 size={15} /> {libTopicFilter === 'all' ? 'Clear All' : `Clear ${topicsMap[libTopicFilter]?.title || libTopicFilter}`}
-              </button>
-            </div>
+                }
+              }}
+              disabled={customQuestionsList.length === 0}
+              style={{
+                padding: '9px 16px',
+                borderRadius: '12px',
+                border: 'none',
+                background: 'rgba(239, 68, 68, 0.15)',
+                color: '#ef4444',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Trash2 size={15} /> {libTopicFilter === 'all' ? 'Clear All' : `Clear ${topicsMap[libTopicFilter]?.title || libTopicFilter}`}
+            </button>
           </div>
 
           <div style={{
@@ -2525,9 +2462,7 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════
-          TAB 5: DISCOUNT COUPONS & PROMO ENGINE
-         ═══════════════════════════════════════════ */}
+      {/* ─── TAB 5: DISCOUNT COUPONS ─── */}
       {activeTab === 'coupons' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div style={{
@@ -2661,7 +2596,6 @@ export const AdminPanel: React.FC = () => {
             </form>
           </div>
 
-          {/* Active Coupons List */}
           <div style={{
             background: 'var(--bg-surface, #111827)',
             border: '1px solid var(--border-color, #1f2937)',
@@ -2754,9 +2688,7 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════
-          TAB 6: ANNOUNCEMENT BANNER CMS
-         ═══════════════════════════════════════════ */}
+      {/* ─── TAB 6: ANNOUNCEMENT BANNER CMS ─── */}
       {activeTab === 'announcements' && (
         <div style={{
           background: 'var(--bg-surface, #111827)',
@@ -2877,43 +2809,6 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Live Preview Box */}
-          <div style={{ marginTop: '8px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-              Live Student Preview:
-            </label>
-            <div style={{
-              padding: '12px 18px',
-              borderRadius: '12px',
-              background: bannerConfig.type === 'promo' ? 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)'
-                : bannerConfig.type === 'urgent' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                : bannerConfig.type === 'alert' ? 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)'
-                : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.3)'
-            }}>
-              <div style={{ fontSize: '13px', fontWeight: 700 }}>
-                {bannerConfig.text || 'Preview text...'}
-              </div>
-              {bannerConfig.actionText && (
-                <span style={{
-                  background: 'rgba(255, 255, 255, 0.25)',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: 800,
-                  whiteSpace: 'nowrap'
-                }}>
-                  {bannerConfig.actionText} →
-                </span>
-              )}
-            </div>
-          </div>
-
           <button
             onClick={handleSaveBanner}
             style={{
@@ -2937,9 +2832,7 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════
-          TAB 7: VOCAB & RULES CMS
-         ═══════════════════════════════════════════ */}
+      {/* ─── TAB 7: VOCAB CMS ─── */}
       {activeTab === 'content_cms' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div style={{
@@ -2956,7 +2849,7 @@ export const AdminPanel: React.FC = () => {
                 Add New High-Yield Vocab Word to Vocab Bank
               </h2>
               <p style={{ fontSize: '13px', color: 'var(--text-dim, #9ca3af)', margin: 0 }}>
-                Enrich the 6,000+ PYQ Vocab Bank with synonyms, antonyms, Hindi meanings, mnemonics, and example sentences.
+                Enrich the 6,000+ PYQ Vocab Bank with synonyms, antonyms, Hindi meanings, and example sentences.
               </p>
             </div>
 
@@ -3148,9 +3041,7 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════
-          TAB 8: PRICING & PLAN CONTROLS
-         ═══════════════════════════════════════════ */}
+      {/* ─── TAB 8: PRICING CONTROLS ─── */}
       {activeTab === 'pricing' && (
         <div style={{
           background: 'var(--bg-surface, #111827)',
@@ -3278,9 +3169,7 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════
-          TAB 9: STUDENTS CRM
-         ═══════════════════════════════════════════ */}
+      {/* ─── TAB 9: STUDENTS CRM ─── */}
       {activeTab === 'users' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{
@@ -3424,9 +3313,7 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════
-          TAB 10: SETTINGS & SECURITY
-         ═══════════════════════════════════════════ */}
+      {/* ─── TAB 10: SETTINGS & SECURITY ─── */}
       {activeTab === 'settings' && (
         <div style={{
           background: 'var(--bg-surface, #111827)',
