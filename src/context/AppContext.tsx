@@ -78,7 +78,7 @@ const AppContext = createContext<AppContextType | null>(null);
 // Google Apps Script Webhook URL (Replace with your deployed Web App URL)
 export const GOOGLE_SHEET_API_URL = typeof window !== 'undefined' && localStorage.getItem('ssc_sheet_api_url')
   ? localStorage.getItem('ssc_sheet_api_url')!
-  : 'https://script.google.com/macros/s/AKfycbytYk0diOlHhUcGqVp35J0Wy_k4PN-cHWmELE2sKasFK9ZaoqvUeIjIJHOq0xmzMLUTxQ/exec';
+  : 'https://script.google.com/macros/s/AKfycbwNfCto91EVrMTYgov2r4A5yavFfxQPI2DHc023uew2RTFb0qgMIQJrTloqe5cemERvxA/exec';
 
 const STORAGE_KEYS = {
   THEME: 'ssc_quiz_theme',
