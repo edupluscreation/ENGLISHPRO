@@ -220,9 +220,25 @@ export const Profile: React.FC = () => {
             <span>Unlock Pro ₹29</span>
           </button>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#10b981', fontWeight: 700 }}>
-            <ShieldCheck size={16} />
-            <span>Till: {proExpiryDate || 'Active'}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 10px',
+              borderRadius: '8px',
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              color: '#10b981',
+              fontSize: '12px',
+              fontWeight: 800
+            }}>
+              <ShieldCheck size={14} />
+              <span>{typeof window !== 'undefined' && localStorage.getItem('ssc_pro_expiry_timestamp') ? Math.max(0, Math.ceil((parseInt(localStorage.getItem('ssc_pro_expiry_timestamp')!, 10) - Date.now()) / (1000 * 60 * 60 * 24))) : 60} Days Left</span>
+            </div>
+            <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+              Till: {proExpiryDate || 'Active'}
+            </span>
           </div>
         )}
       </div>
@@ -278,7 +294,7 @@ export const Profile: React.FC = () => {
                 </span>
               </div>
               <div style={{ fontSize: '11.5px', color: isProUser ? '#10b981' : 'var(--text-dim)', marginTop: '2px', fontWeight: 700 }}>
-                {isProUser ? `🟢 Pro Pass Active (Till ${proExpiryDate || '60 Days'})` : '⚪ Free Access Plan'}
+                {isProUser ? `🟢 Pro Pass Active • ${typeof window !== 'undefined' && localStorage.getItem('ssc_pro_expiry_timestamp') ? Math.max(0, Math.ceil((parseInt(localStorage.getItem('ssc_pro_expiry_timestamp')!, 10) - Date.now()) / (1000 * 60 * 60 * 24))) : 60} Days Remaining (Till ${proExpiryDate || 'Active'})` : '⚪ Free Access Plan'}
               </div>
             </div>
 
