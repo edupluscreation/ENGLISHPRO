@@ -61,7 +61,8 @@ import {
   Settings,
   ArrowLeft,
   Edit3,
-  X
+  X,
+  CreditCard
 } from 'lucide-react';
 
 interface SheetUser {
@@ -126,6 +127,12 @@ export const AdminPanel: React.FC = () => {
   });
   const [planDays, setPlanDays] = useState<number>(() => {
     return parseInt(localStorage.getItem('ssc_admin_plan_days') || '60', 10);
+  });
+  const [razorpayKeyId, setRazorpayKeyId] = useState<string>(() => {
+    return localStorage.getItem('ssc_razorpay_key_id') || '';
+  });
+  const [razorpayMerchantName, setRazorpayMerchantName] = useState<string>(() => {
+    return localStorage.getItem('ssc_razorpay_merchant_name') || 'SSC English Pro';
   });
   const [priceSaveMsg, setPriceSaveMsg] = useState('');
 
@@ -249,6 +256,8 @@ export const AdminPanel: React.FC = () => {
     localStorage.setItem('ssc_admin_pro_price', proPrice.toString());
     localStorage.setItem('ssc_admin_orig_price', originalPrice.toString());
     localStorage.setItem('ssc_admin_plan_days', planDays.toString());
+    localStorage.setItem('ssc_razorpay_key_id', razorpayKeyId.trim());
+    localStorage.setItem('ssc_razorpay_merchant_name', razorpayMerchantName.trim());
     
     const activeUrl = sheetUrl || getSheetApiUrl();
     if (activeUrl) {
@@ -3478,6 +3487,83 @@ export const AdminPanel: React.FC = () => {
                   boxSizing: 'border-box'
                 }}
               />
+            </div>
+          </div>
+
+          {/* RAZORPAY INTEGRATION CARD */}
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%)',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
+            borderRadius: '16px',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CreditCard size={20} color="#818cf8" />
+              <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0 }}>
+                💳 Razorpay Payment Gateway Settings (Account Linking)
+              </h3>
+            </div>
+            <p style={{ fontSize: '12.5px', color: 'var(--text-dim, #9ca3af)', margin: 0 }}>
+              Apne Razorpay Dashboard se Key ID dalein taaki students ka online payment seedhe aapke bank account mein credit ho sake.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}>
+                  Razorpay Key ID (Live / Test Key):
+                </label>
+                <input
+                  type="text"
+                  value={razorpayKeyId}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    setRazorpayKeyId(val);
+                    localStorage.setItem('ssc_razorpay_key_id', val);
+                  }}
+                  placeholder="e.g. rzp_live_xxxxxxxxxxxx (ya rzp_test_...)"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--border-color, #374151)',
+                    background: 'var(--bg-primary, #0f172a)',
+                    color: 'var(--text-main, #fff)',
+                    fontSize: '13.5px',
+                    fontFamily: 'monospace',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}>
+                  Business / Brand Name on Checkout:
+                </label>
+                <input
+                  type="text"
+                  value={razorpayMerchantName}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setRazorpayMerchantName(val);
+                    localStorage.setItem('ssc_razorpay_merchant_name', val);
+                  }}
+                  placeholder="e.g. SSC English Pro"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '12px',
+                    border: '1px solid var(--border-color, #374151)',
+                    background: 'var(--bg-primary, #0f172a)',
+                    color: 'var(--text-main, #fff)',
+                    fontSize: '13.5px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
             </div>
           </div>
 
