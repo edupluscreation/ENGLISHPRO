@@ -59,7 +59,9 @@ import {
   Ticket,
   BookMarked,
   Settings,
-  ArrowLeft
+  ArrowLeft,
+  Edit3,
+  X
 } from 'lucide-react';
 
 interface SheetUser {
@@ -630,6 +632,46 @@ export const AdminPanel: React.FC = () => {
       return matchTopic && matchSearch;
     });
   }, [customQuestionsList, libTopicFilter, libSearchQuery]);
+
+  // Edit Question State
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [editTopic, setEditTopic] = useState('');
+  const [editText, setEditText] = useState('');
+  const [editOpts, setEditOpts] = useState<string[]>(['', '', '', '']);
+  const [editCorrect, setEditCorrect] = useState(0);
+  const [editExpl, setEditExpl] = useState('');
+  const [editExamTag, setEditExamTag] = useState('SSC CGL 2024');
+  const [editDifficulty, setEditDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
+
+  const handleStartEdit = (q: Question) => {
+    setEditingQuestion(q);
+    setEditTopic(q.topic);
+    setEditText(q.questionText);
+    setEditOpts([...q.options]);
+    setEditCorrect(q.correctAnswer);
+    setEditExpl(q.explanation);
+    setEditExamTag(q.examTag || 'SSC CGL 2024');
+    setEditDifficulty(q.difficulty || 'Medium');
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingQuestion) return;
+    const updated: Question = {
+      ...editingQuestion,
+      topic: editTopic,
+      questionText: editText.trim(),
+      options: editOpts.map(o => o.trim()),
+      correctAnswer: editCorrect,
+      explanation: editExpl.trim(),
+      examTag: editExamTag.trim(),
+      difficulty: editDifficulty
+    };
+    const list = getCustomQuestions().map(q => q.id === updated.id ? updated : q);
+    localStorage.setItem('ssc_custom_questions', JSON.stringify(list));
+    refreshData();
+    setEditingQuestion(null);
+  };
 
   const handleDeleteSingleFromLib = (id: string) => {
     if (window.confirm('Delete this custom question?')) {
@@ -2426,23 +2468,44 @@ export const AdminPanel: React.FC = () => {
                       </span>
                     </div>
 
-                    <button
-                      onClick={() => handleDeleteSingleFromLib(q.id)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#ef4444',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '12px',
-                        fontWeight: 700
-                      }}
-                    >
-                      <Trash2 size={14} /> Delete
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        onClick={() => handleStartEdit(q)}
+                        style={{
+                          background: 'rgba(99, 102, 241, 0.15)',
+                          border: '1px solid rgba(99, 102, 241, 0.3)',
+                          color: '#a5b4fc',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          padding: '4px 10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '12px',
+                          fontWeight: 700
+                        }}
+                      >
+                        <Edit3 size={13} /> Edit
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteSingleFromLib(q.id)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '12px',
+                          fontWeight: 700
+                        }}
+                      >
+                        <Trash2 size={14} /> Delete
+                      </button>
+                    </div>
                   </div>
 
                   <div style={{ fontSize: '14.5px', fontWeight: 600, color: 'var(--text-main, #fff)', lineHeight: 1.4 }}>
@@ -2472,6 +2535,263 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* EDIT QUESTION MODAL */}
+          {editingQuestion && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              background: 'rgba(0, 0, 0, 0.75)',
+              backdropFilter: 'blur(6px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              padding: '16px',
+              boxSizing: 'border-box'
+            }}>
+              <div style={{
+                width: '100%',
+                maxWidth: '640px',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                background: 'var(--bg-surface, #111827)',
+                border: '1px solid var(--border-color, #1f2937)',
+                borderRadius: '24px',
+                padding: '28px',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '10px',
+                      background: '#4f46e5',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Edit3 size={18} />
+                    </div>
+                    <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>
+                      Edit Custom Question
+                    </h3>
+                  </div>
+
+                  <button
+                    onClick={() => setEditingQuestion(null)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-dim, #9ca3af)',
+                      cursor: 'pointer',
+                      padding: '4px'
+                    }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}>
+                        Topic:
+                      </label>
+                      <select
+                        value={editTopic}
+                        onChange={(e) => setEditTopic(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          borderRadius: '10px',
+                          border: '1px solid var(--border-color, #374151)',
+                          background: 'var(--bg-primary, #0f172a)',
+                          color: 'var(--text-main, #fff)',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          outline: 'none'
+                        }}
+                      >
+                        {Object.entries(topicsMap).map(([tId, tData]) => (
+                          <option key={tId} value={tId}>{tData.title}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}>
+                        Difficulty:
+                      </label>
+                      <select
+                        value={editDifficulty}
+                        onChange={(e) => setEditDifficulty(e.target.value as any)}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          borderRadius: '10px',
+                          border: '1px solid var(--border-color, #374151)',
+                          background: 'var(--bg-primary, #0f172a)',
+                          color: 'var(--text-main, #fff)',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          outline: 'none'
+                        }}
+                      >
+                        <option value="Easy">Easy</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}>
+                      Question Text: *
+                    </label>
+                    <textarea
+                      rows={3}
+                      required
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        borderRadius: '10px',
+                        border: '1px solid var(--border-color, #374151)',
+                        background: 'var(--bg-primary, #0f172a)',
+                        color: 'var(--text-main, #fff)',
+                        fontSize: '13.5px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}>
+                      Options & Correct Answer (Select radio for correct): *
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      {editOpts.map((opt, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => setEditCorrect(idx)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 10px',
+                            borderRadius: '10px',
+                            background: editCorrect === idx ? 'rgba(79, 70, 229, 0.15)' : 'var(--bg-primary, #0f172a)',
+                            border: `1.5px solid ${editCorrect === idx ? '#4f46e5' : 'var(--border-color, #374151)'}`,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="editCorrectRadio"
+                            checked={editCorrect === idx}
+                            onChange={() => setEditCorrect(idx)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <span style={{ fontWeight: 800, fontSize: '13px', color: editCorrect === idx ? '#818cf8' : 'var(--text-dim, #9ca3af)' }}>
+                            {String.fromCharCode(65 + idx)}:
+                          </span>
+                          <input
+                            type="text"
+                            value={opt}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              const newArr = [...editOpts];
+                              newArr[idx] = e.target.value;
+                              setEditOpts(newArr);
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: '4px',
+                              border: 'none',
+                              background: 'transparent',
+                              color: 'var(--text-main, #fff)',
+                              fontSize: '13px',
+                              outline: 'none'
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, marginBottom: '6px' }}>
+                      Explanation / Solution:
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editExpl}
+                      onChange={(e) => setEditExpl(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        borderRadius: '10px',
+                        border: '1px solid var(--border-color, #374151)',
+                        background: 'var(--bg-primary, #0f172a)',
+                        color: 'var(--text-main, #fff)',
+                        fontSize: '13px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setEditingQuestion(null)}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        borderRadius: '12px',
+                        border: '1px solid var(--border-color, #374151)',
+                        background: 'transparent',
+                        color: 'var(--text-dim, #9ca3af)',
+                        fontSize: '13.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      style={{
+                        flex: 2,
+                        padding: '12px',
+                        borderRadius: '12px',
+                        border: 'none',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: '#fff',
+                        fontSize: '13.5px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Save size={16} /> Save Changes
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           )}
         </div>
