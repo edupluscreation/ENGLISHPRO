@@ -9,10 +9,11 @@ import {
   saveCustomQuestions,
   deleteCustomQuestion,
   clearCustomQuestionsForTopic,
-  getAllQuestions,
+  BASE_QUESTION_COUNTS,
+  TOTAL_BASE_QUESTIONS,
   SAMPLE_QUESTIONS_JSON_STRING,
   SAMPLE_QUESTIONS_CSV_STRING
-} from '../data/questions';
+} from '../data/adminData';
 
 export const GOOGLE_SHEET_API_URL = typeof window !== 'undefined'
   ? (localStorage.getItem('ssc_sheet_api_url') || 'https://script.google.com/macros/s/AKfycbz8ESbyd0w96wAz14cB6esDKFNMZd5TPspSpH3FwlyZDPM-4ScVUPqzcdglFx6I7s6qhQ/exec')
@@ -139,13 +140,13 @@ export const AdminPanel: React.FC = () => {
   // Topics & Questions Data
   const [topicsMap, setTopicsMap] = useState(() => getAllTopics());
   const [customQuestionsList, setCustomQuestionsList] = useState<Question[]>(() => getCustomQuestions());
-  const [allQuestionsCount, setAllQuestionsCount] = useState<number>(() => getAllQuestions().length);
+  const [allQuestionsCount, setAllQuestionsCount] = useState<number>(() => TOTAL_BASE_QUESTIONS + getCustomQuestions().length);
 
   const refreshData = () => {
     setTopicsMap(getAllTopics());
     const cq = getCustomQuestions();
     setCustomQuestionsList(cq);
-    setAllQuestionsCount(getAllQuestions().length);
+    setAllQuestionsCount(TOTAL_BASE_QUESTIONS + cq.length);
   };
 
   // ─── SINGLE QUESTION STATE ───
@@ -2231,8 +2232,8 @@ export const AdminPanel: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
               {Object.entries(topicsMap).map(([tId, tData]) => {
                 const isCustom = getCustomTopics().some(t => t.id === tId);
-                const allQs = getAllQuestions().filter(q => q.topic === tId);
                 const customCount = customQuestionsList.filter(q => q.topic === tId).length;
+                const totalTopicCount = (BASE_QUESTION_COUNTS[tId] || 0) + customCount;
 
                 return (
                   <div
@@ -2279,7 +2280,7 @@ export const AdminPanel: React.FC = () => {
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid var(--border-color, #1f2937)' }}>
                       <span style={{ fontSize: '12px', fontWeight: 700, color: '#818cf8' }}>
-                        {allQs.length.toLocaleString()} Qs ({customCount} Custom)
+                        {totalTopicCount.toLocaleString()} Qs ({customCount} Custom)
                       </span>
                       
                       {isCustom && (
