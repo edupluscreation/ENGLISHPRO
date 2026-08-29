@@ -16,8 +16,8 @@ import {
 } from '../data/adminData';
 
 export const GOOGLE_SHEET_API_URL = typeof window !== 'undefined'
-  ? (localStorage.getItem('ssc_sheet_api_url') || 'https://script.google.com/macros/s/AKfycbz8ESbyd0w96wAz14cB6esDKFNMZd5TPspSpH3FwlyZDPM-4ScVUPqzcdglFx6I7s6qhQ/exec')
-  : 'https://script.google.com/macros/s/AKfycbz8ESbyd0w96wAz14cB6esDKFNMZd5TPspSpH3FwlyZDPM-4ScVUPqzcdglFx6I7s6qhQ/exec';
+  ? (localStorage.getItem('ssc_sheet_api_url') || 'https://script.google.com/macros/s/AKfycbytYk0diOlHhUcGqVp35J0Wy_k4PN-cHWmELE2sKasFK9ZaoqvUeIjIJHOq0xmzMLUTxQ/exec')
+  : 'https://script.google.com/macros/s/AKfycbytYk0diOlHhUcGqVp35J0Wy_k4PN-cHWmELE2sKasFK9ZaoqvUeIjIJHOq0xmzMLUTxQ/exec';
 
 import { 
   ShieldCheck, 
