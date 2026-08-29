@@ -261,15 +261,16 @@ export const AdminPanel: React.FC = () => {
       const data = await res.json();
       if (data && Array.isArray(data.users)) {
         setSheetUsers(data.users);
+        if (data.users.length === 0) {
+          setUserActionMsg('Connected to Google Sheet, but 0 users found in the "Users" sheet tab.');
+        }
       } else {
-        setSheetUsers([
-          { phone: '9876543210', name: 'Rahul Sharma', signupDate: '29/08/2026', isPro: true, proExpiry: '28/10/2026' },
-          { phone: '9123456780', name: 'Pooja Verma', signupDate: '29/08/2026', isPro: false, proExpiry: '' },
-          { phone: '9811223344', name: 'Amit Singh', signupDate: '28/08/2026', isPro: true, proExpiry: '27/10/2026' }
-        ]);
+        setSheetUsers([]);
+        setUserActionMsg(`Google Apps Script Error: ${data.error || 'getUsers action not deployed on Google Apps Script'}`);
       }
-    } catch (err) {
-      setUserActionMsg('Could not fetch real-time users list directly. Connect Google Sheet API.');
+    } catch (err: any) {
+      setSheetUsers([]);
+      setUserActionMsg(`Network error connecting to Google Sheet Webhook: ${err.message}`);
     } finally {
       setIsLoadingUsers(false);
     }
