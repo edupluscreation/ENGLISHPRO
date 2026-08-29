@@ -311,6 +311,81 @@ export const GrammarChecker: React.FC = () => {
     }
   };
 
+  const checkGrammarWithLanguageTool = async (sentence: string): Promise<GrammarAnalysisResult> => {
+    try {
+      const params = new URLSearchParams();
+      params.append('text', sentence);
+      params.append('language', 'en-US');
+
+      const response = await fetch('https://api.languagetool.org/v2/check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        },
+        body: params.toString()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const matches = data.matches || [];
+
+        if (matches.length === 0) {
+          return {
+            hasErrors: false,
+            errorCount: 0,
+            correctedSentence: sentence,
+            errorHighlights: [],
+            grammarRuleTitle: "Grammatically Correct Sentence",
+            formula: "Standard Syntactic Structure Verified",
+            hindiExplanation: "यह वाक्य व्याकरण की दृष्टि से पूर्णतः शुद्ध है। इसमें कर्ता-क्रिया सामंजस्य (Subject-Verb Agreement), काल (Tense), और कारक (Prepositions) का सही प्रयोग हुआ है।",
+            englishExplanation: "This sentence adheres to standard English grammar rules. Sentence structure, tenses, and agreements are syntactically sound.",
+            examTrapTip: "परीक्षा में इस प्रकार के वाक्य 'No Error' (कोई त्रुटि नहीं) विकल्प के लिए उपयुक्त होते हैं।"
+          };
+        }
+
+        // Apply corrections from back to front so indices don't shift
+        let corrected = sentence;
+        const sortedMatches = [...matches].sort((a, b) => b.offset - a.offset);
+        for (const m of sortedMatches) {
+          if (m.replacements && m.replacements.length > 0) {
+            const repl = m.replacements[0].value;
+            corrected = corrected.slice(0, m.offset) + repl + corrected.slice(m.offset + m.length);
+          }
+        }
+
+        const highlights: ErrorHighlight[] = matches.map((m: any) => {
+          const originalPhrase = sentence.slice(m.offset, m.offset + m.length);
+          const correctedPhrase = m.replacements && m.replacements.length > 0 ? m.replacements[0].value : 'Check syntax';
+          return {
+            originalPhrase: originalPhrase || 'Error segment',
+            correctedPhrase: correctedPhrase,
+            reason: m.message || m.shortMessage || 'Grammatical rule inconsistency.'
+          };
+        });
+
+        const firstMatch = matches[0];
+        const ruleName = firstMatch?.rule?.category?.name || firstMatch?.rule?.id || 'Grammar & Syntax Rule';
+
+        return {
+          hasErrors: true,
+          errorCount: matches.length,
+          correctedSentence: corrected,
+          errorHighlights: highlights,
+          grammarRuleTitle: `SSC Rule: ${ruleName}`,
+          formula: `${highlights[0]?.originalPhrase} ➔ ${highlights[0]?.correctedPhrase}`,
+          hindiExplanation: `वाक्य में त्रुटि: ${highlights.map(h => `${h.originalPhrase} के स्थान पर ${h.correctedPhrase}`).join(', ')}। ${firstMatch?.message || ''}`,
+          englishExplanation: `${firstMatch?.message || 'Grammar correction applied according to standard SSC examination rules.'}`,
+          examTrapTip: `एसएससी परीक्षा में ऐसे प्रश्नों में '${highlights[0]?.originalPhrase}' को ध्यान से देखें। सही विकल्प '${highlights[0]?.correctedPhrase}' होगा!`
+        };
+      }
+    } catch (e) {
+      console.warn('LanguageTool call failed, using heuristic engine:', e);
+    }
+
+    return analyzeLocally(sentence);
+  };
+
   const handleCheckGrammar = async (textToCheck = inputText) => {
     const text = textToCheck.trim();
     if (!text) return;
@@ -331,8 +406,8 @@ export const GrammarChecker: React.FC = () => {
     setErrorMessage(null);
 
     try {
-      const heuristicRes = analyzeLocally(text);
-      setResult(heuristicRes);
+      const res = await checkGrammarWithLanguageTool(text);
+      setResult(res);
       setHasChecked(true);
     } catch {
       setErrorMessage('Unable to analyze sentence. Please try again.');

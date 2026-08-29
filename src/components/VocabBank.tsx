@@ -83,6 +83,8 @@ export const VocabBank: React.FC = () => {
     setThesaurusError(null);
     setIsThesaurusOpen(true);
 
+    const matchedLocal = VOCAB_ITEMS.find(item => item.word.toLowerCase() === word);
+
     try {
       const [synRes, antRes, dictRes] = await Promise.allSettled([
         fetch(`https://api.datamuse.com/words?rel_syn=${word}&max=15`).then(r => r.json()),
@@ -118,17 +120,49 @@ export const VocabBank: React.FC = () => {
         }));
       }
 
+      if (matchedLocal && meanings.length === 0) {
+        meanings = [{
+          partOfSpeech: matchedLocal.type || 'Word',
+          definitions: [{
+            definition: matchedLocal.meaning,
+            example: matchedLocal.exampleSentence
+          }],
+          synonyms: matchedLocal.synonyms || [],
+          antonyms: matchedLocal.antonyms || []
+        }];
+      }
+
       if (meanings.length === 0 && extraSyn.length === 0 && extraAnt.length === 0) {
         setThesaurusError(`No results found for "${word}".`);
       } else {
         setThesaurusData({
           word, phonetic, audioUrl, origin, meanings,
-          extraSynonyms: Array.from(new Set(extraSyn)).slice(0, 15),
-          extraAntonyms: Array.from(new Set(extraAnt)).slice(0, 15)
+          extraSynonyms: Array.from(new Set([...(matchedLocal?.synonyms || []), ...extraSyn])).slice(0, 15),
+          extraAntonyms: Array.from(new Set([...(matchedLocal?.antonyms || []), ...extraAnt])).slice(0, 15)
         });
       }
     } catch (err) {
-      setThesaurusError('Unable to connect to Thesaurus API. Please check your internet connection.');
+      if (matchedLocal) {
+        setThesaurusData({
+          word,
+          phonetic: '',
+          audioUrl: '',
+          origin: '',
+          meanings: [{
+            partOfSpeech: matchedLocal.type || 'Word',
+            definitions: [{
+              definition: matchedLocal.meaning,
+              example: matchedLocal.exampleSentence
+            }],
+            synonyms: matchedLocal.synonyms || [],
+            antonyms: matchedLocal.antonyms || []
+          }],
+          extraSynonyms: matchedLocal.synonyms || [],
+          extraAntonyms: matchedLocal.antonyms || []
+        });
+      } else {
+        setThesaurusError('Unable to connect to Thesaurus API. Please check your internet connection.');
+      }
     } finally {
       setThesaurusLoading(false);
     }
