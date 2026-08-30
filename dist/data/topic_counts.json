@@ -1,0 +1,11 @@
+{
+  "spot_error": 1997,
+  "sentence_improvement": 1994,
+  "fill_blanks": 2016,
+  "cloze_test": 2010,
+  "one_word": 2031,
+  "idioms_phrases": 1993,
+  "synonyms": 2012,
+  "antonyms": 2024,
+  "misspelled": 2000
+}
