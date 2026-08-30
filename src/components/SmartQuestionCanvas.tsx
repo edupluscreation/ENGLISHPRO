@@ -153,36 +153,35 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
     const parts = cleanSentence.split(/(_{3,}|________)/);
 
     return (
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '10px' }}>
         {/* Instruction Header */}
         <div style={{
           background: 'var(--primary-light)',
           border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-md)',
-          padding: '10px 16px',
-          marginBottom: '14px',
+          borderRadius: '8px',
+          padding: '6px 10px',
+          marginBottom: '8px',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px'
+          gap: '6px'
         }}>
-          <Edit3 size={16} color="var(--primary)" style={{ flexShrink: 0 }} />
-          <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.4 }}>
+          <Edit3 size={13} color="var(--primary)" style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: '11.5px', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.3 }}>
             {instruction}
           </div>
         </div>
 
         {/* Target Sentence Card */}
         <div style={{
-          fontSize: '1.18rem',
-          lineHeight: 1.85,
+          fontSize: '14px',
+          lineHeight: 1.5,
           color: 'var(--text-main)',
           fontWeight: 600,
           background: 'var(--bg-surface-elevated)',
-          padding: '22px 24px',
-          borderRadius: 'var(--radius-md)',
-          border: '1.5px solid var(--border-color)',
-          borderLeft: '5px solid var(--primary)',
-          boxShadow: 'var(--shadow-xs)'
+          padding: '12px 14px',
+          borderRadius: '10px',
+          border: '1px solid var(--border-color)',
+          borderLeft: '4px solid var(--primary)'
         }}>
           {parts.map((part, i) => {
             if (part.startsWith('___') || part.includes('___') || part === '________') {
@@ -193,18 +192,16 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '3px 14px',
-                    margin: '0 6px',
-                    borderRadius: '8px',
+                    padding: '2px 8px',
+                    margin: '0 4px',
+                    borderRadius: '6px',
                     background: currentPreviewWord ? 'var(--primary)' : 'var(--primary-light)',
                     color: currentPreviewWord ? '#ffffff' : 'var(--primary)',
-                    border: currentPreviewWord ? '2px solid var(--primary)' : '2px dashed var(--primary)',
+                    border: currentPreviewWord ? '1.5px solid var(--primary)' : '1.5px dashed var(--primary)',
                     fontWeight: 800,
-                    fontSize: '1.02rem',
-                    boxShadow: currentPreviewWord ? '0 2px 10px rgba(99, 102, 241, 0.4)' : 'none',
-                    transition: 'all 0.2s ease',
+                    fontSize: '12.5px',
                     verticalAlign: 'baseline',
-                    minWidth: '95px',
+                    minWidth: '70px',
                     textAlign: 'center'
                   }}
                 >
@@ -227,28 +224,23 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
   // 2. SPOT THE ERROR (Instruction on Top + Segmented Sentence Below)
   // ─────────────────────────────────────────────────────────────
   if (topic === 'spot_error' || qText.toLowerCase().includes('identify the segment')) {
-    const is4SentencePrompt = (sentence.toLowerCase().includes('select the sentence') || 
-                              sentence.toLowerCase().includes('grammatically correct') ||
-                              sentence.toLowerCase().includes('grammatical error')) && 
-                              !sentence.includes('/');
-
     const segments = sentence.split(/\s*\/\s*/).filter(Boolean);
 
     return (
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '10px' }}>
         {/* Instruction Header */}
         <div style={{
           background: 'var(--error-bg)',
           border: '1px solid var(--error-border)',
-          borderRadius: 'var(--radius-md)',
-          padding: '10px 16px',
-          marginBottom: '14px',
+          borderRadius: '8px',
+          padding: '5px 10px',
+          marginBottom: '6px',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px'
+          gap: '6px'
         }}>
-          <AlertCircle size={16} color="#ef4444" style={{ flexShrink: 0 }} />
-          <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.4 }}>
+          <AlertCircle size={13} color="#ef4444" style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: '11px', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.3 }}>
             {instruction}
           </div>
         </div>
@@ -256,13 +248,12 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
         {/* Target Sentence Card */}
         <div style={{
           background: 'var(--bg-surface-elevated)',
-          padding: '22px 24px',
-          borderRadius: 'var(--radius-md)',
-          border: '1.5px solid var(--border-color)',
-          borderLeft: '5px solid #ef4444',
-          boxShadow: 'var(--shadow-xs)',
-          fontSize: '1.16rem',
-          lineHeight: 1.85,
+          padding: '10px 14px',
+          borderRadius: '10px',
+          border: '1px solid var(--border-color)',
+          borderLeft: '4px solid #ef4444',
+          fontSize: '14px',
+          lineHeight: 1.45,
           color: 'var(--text-main)',
           fontWeight: 600
         }}>
@@ -274,10 +265,9 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
                   {sIdx < segments.length - 1 && (
                     <span style={{
                       display: 'inline-block',
-                      margin: '0 8px',
+                      margin: '0 6px',
                       color: '#ef4444',
-                      fontWeight: 800,
-                      opacity: 0.8
+                      fontWeight: 800
                     }}>
                       /
                     </span>
@@ -307,20 +297,20 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
     const themeBorder = isSynonym ? 'var(--success-border)' : 'var(--error-border)';
 
     return (
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '10px' }}>
         {/* Instruction Header */}
         <div style={{
           background: themeBg,
           border: `1px solid ${themeBorder}`,
-          borderRadius: 'var(--radius-md)',
-          padding: '10px 16px',
-          marginBottom: '14px',
+          borderRadius: '8px',
+          padding: '5px 10px',
+          marginBottom: '6px',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px'
+          gap: '6px'
         }}>
-          <Sparkles size={16} color={themeColor} style={{ flexShrink: 0 }} />
-          <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.4 }}>
+          <Sparkles size={13} color={themeColor} style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: '11px', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.3 }}>
             {instruction}
           </div>
         </div>
@@ -328,20 +318,18 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
         {/* Word Display Banner */}
         <div style={{
           background: themeBg,
-          border: `1.5px solid ${themeBorder}`,
-          borderRadius: 'var(--radius-lg)',
-          padding: '24px 26px',
-          textAlign: 'center',
-          boxShadow: 'var(--shadow-xs)'
+          border: `1px solid ${themeBorder}`,
+          borderRadius: '10px',
+          padding: '12px 14px',
+          textAlign: 'center'
         }}>
           <div style={{ 
-            fontSize: '2rem', 
+            fontSize: '18px', 
             fontWeight: 900, 
             color: 'var(--text-main)', 
-            letterSpacing: '1.2px',
+            letterSpacing: '0.8px',
             textTransform: 'uppercase',
-            margin: '6px 0',
-            fontFamily: 'var(--font-heading)'
+            margin: '2px 0'
           }}>
             "{targetWord.toUpperCase()}"
           </div>
@@ -359,20 +347,20 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
     if (m) targetIdiom = m[1];
 
     return (
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '10px' }}>
         {/* Instruction Header */}
         <div style={{
           background: 'var(--warning-bg)',
           border: '1px solid var(--warning-border)',
-          borderRadius: 'var(--radius-md)',
-          padding: '10px 16px',
-          marginBottom: '14px',
+          borderRadius: '8px',
+          padding: '5px 10px',
+          marginBottom: '6px',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px'
+          gap: '6px'
         }}>
-          <BookOpen size={16} color="var(--warning)" style={{ flexShrink: 0 }} />
-          <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.4 }}>
+          <BookOpen size={13} color="var(--warning)" style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: '11px', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.3 }}>
             {instruction}
           </div>
         </div>
@@ -380,18 +368,16 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
         {/* Idiom Phrase Card */}
         <div style={{
           background: 'var(--bg-surface-elevated)',
-          border: '1.5px solid var(--border-color)',
-          borderLeft: '5px solid var(--warning)',
-          borderRadius: 'var(--radius-md)',
-          padding: '22px 24px',
-          boxShadow: 'var(--shadow-xs)'
+          border: '1px solid var(--border-color)',
+          borderLeft: '4px solid var(--warning)',
+          borderRadius: '10px',
+          padding: '10px 14px'
         }}>
           <div style={{ 
-            fontSize: '1.35rem', 
+            fontSize: '15px', 
             fontWeight: 800, 
             color: 'var(--text-main)', 
-            lineHeight: 1.5,
-            fontFamily: 'var(--font-heading)'
+            lineHeight: 1.4
           }}>
             "{targetIdiom}"
           </div>
@@ -409,20 +395,20 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
     if (m) phrase = m[1];
 
     return (
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '10px' }}>
         {/* Instruction Header */}
         <div style={{
           background: 'var(--primary-light)',
           border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-md)',
-          padding: '10px 16px',
-          marginBottom: '14px',
+          borderRadius: '8px',
+          padding: '5px 10px',
+          marginBottom: '6px',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px'
+          gap: '6px'
         }}>
-          <Layers size={16} color="#8b5cf6" style={{ flexShrink: 0 }} />
-          <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.4 }}>
+          <Layers size={13} color="#8b5cf6" style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: '11px', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.3 }}>
             {instruction}
           </div>
         </div>
@@ -430,13 +416,12 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
         {/* Group of Words Card */}
         <div style={{
           background: 'var(--bg-surface-elevated)',
-          border: '1.5px solid var(--border-color)',
-          borderLeft: '5px solid #8b5cf6',
-          borderRadius: 'var(--radius-md)',
-          padding: '22px 24px',
-          boxShadow: 'var(--shadow-xs)'
+          border: '1px solid var(--border-color)',
+          borderLeft: '4px solid #8b5cf6',
+          borderRadius: '10px',
+          padding: '10px 14px'
         }}>
-          <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.6 }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.45 }}>
             "{phrase}"
           </div>
         </div>
@@ -452,20 +437,20 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
     const color = isIncorrect ? '#f43f5e' : '#06b6d4';
 
     return (
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '10px' }}>
         {/* Instruction Header */}
         <div style={{
           background: isIncorrect ? 'var(--error-bg)' : 'var(--primary-light)',
           border: `1px solid ${isIncorrect ? 'var(--error-border)' : 'var(--border-color)'}`,
-          borderRadius: 'var(--radius-md)',
-          padding: '10px 16px',
-          marginBottom: '14px',
+          borderRadius: '8px',
+          padding: '5px 10px',
+          marginBottom: '6px',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px'
+          gap: '6px'
         }}>
-          <CheckSquare size={16} color={color} style={{ flexShrink: 0 }} />
-          <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.4 }}>
+          <CheckSquare size={13} color={color} style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: '11px', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.3 }}>
             {instruction}
           </div>
         </div>
@@ -473,13 +458,12 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
         {/* Prompt Card */}
         <div style={{
           background: 'var(--bg-surface-elevated)',
-          border: '1.5px solid var(--border-color)',
-          borderLeft: `5px solid ${color}`,
-          borderRadius: 'var(--radius-md)',
-          padding: '22px 24px',
-          boxShadow: 'var(--shadow-xs)'
+          border: '1px solid var(--border-color)',
+          borderLeft: `4px solid ${color}`,
+          borderRadius: '10px',
+          padding: '10px 14px'
         }}>
-          <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.6 }}>
+          <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.45 }}>
             {isIncorrect 
               ? 'Find the word with the INCORRECT (wrong) spelling from the options below:' 
               : 'Find the word with the 100% CORRECT spelling from the options below:'}
@@ -494,36 +478,35 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
   // ─────────────────────────────────────────────────────────────
   if (topic === 'sentence_improvement') {
     return (
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '10px' }}>
         {/* Instruction Header */}
         <div style={{
           background: 'var(--primary-light)',
           border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-md)',
-          padding: '10px 16px',
-          marginBottom: '14px',
+          borderRadius: '8px',
+          padding: '5px 10px',
+          marginBottom: '6px',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px'
+          gap: '6px'
         }}>
-          <Sparkles size={16} color="var(--primary)" style={{ flexShrink: 0 }} />
-          <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.4 }}>
+          <Sparkles size={13} color="var(--primary)" style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: '11px', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.3 }}>
             {instruction}
           </div>
         </div>
 
         {/* Target Sentence Card */}
         <div style={{
-          fontSize: '1.18rem',
-          lineHeight: 1.8,
+          fontSize: '14px',
+          lineHeight: 1.45,
           color: 'var(--text-main)',
           fontWeight: 600,
           background: 'var(--bg-surface-elevated)',
-          padding: '22px 24px',
-          borderRadius: 'var(--radius-md)',
-          border: '1.5px solid var(--border-color)',
-          borderLeft: '5px solid var(--primary)',
-          boxShadow: 'var(--shadow-xs)'
+          padding: '10px 14px',
+          borderRadius: '10px',
+          border: '1px solid var(--border-color)',
+          borderLeft: '4px solid var(--primary)'
         }}>
           {renderSentenceWithUnderline(sentence)}
         </div>
@@ -535,36 +518,35 @@ export const SmartQuestionCanvas: React.FC<SmartQuestionCanvasProps> = ({
   // DEFAULT / GENERAL
   // ─────────────────────────────────────────────────────────────
   return (
-    <div style={{ marginBottom: '24px' }}>
+    <div style={{ marginBottom: '10px' }}>
       {instruction && instruction !== sentence && (
         <div style={{
           background: 'var(--bg-surface-elevated)',
           border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-md)',
-          padding: '10px 16px',
-          marginBottom: '14px',
+          borderRadius: '8px',
+          padding: '5px 10px',
+          marginBottom: '6px',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px'
+          gap: '6px'
         }}>
-          <HelpCircle size={16} color="var(--primary)" style={{ flexShrink: 0 }} />
-          <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.4 }}>
+          <HelpCircle size={13} color="var(--primary)" style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: '11px', color: 'var(--text-main)', fontWeight: 600, lineHeight: 1.3 }}>
             {instruction}
           </div>
         </div>
       )}
 
       <div style={{
-        fontSize: '1.16rem',
-        lineHeight: 1.7,
+        fontSize: '14px',
+        lineHeight: 1.45,
         color: 'var(--text-main)',
         fontWeight: 600,
         background: 'var(--bg-surface-elevated)',
-        padding: '20px 22px',
-        borderRadius: 'var(--radius-md)',
-        border: '1.5px solid var(--border-color)',
-        borderLeft: '5px solid var(--primary)',
-        boxShadow: 'var(--shadow-xs)'
+        padding: '10px 14px',
+        borderRadius: '10px',
+        border: '1px solid var(--border-color)',
+        borderLeft: '4px solid var(--primary)'
       }}>
         {renderSentenceWithUnderline(sentence)}
       </div>

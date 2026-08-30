@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import confetti from 'canvas-confetti';
 import { 
@@ -8,12 +8,12 @@ import {
   ShieldCheck, 
   Zap, 
   Lock, 
-  CreditCard,
-  Check,
-  Smartphone,
-  User,
-  ArrowRight,
-  Loader2
+  CreditCard, 
+  Smartphone, 
+  User, 
+  ArrowRight, 
+  Loader2,
+  Check
 } from 'lucide-react';
 
 declare global {
@@ -22,23 +22,53 @@ declare global {
   }
 }
 
+// Helper to ensure Razorpay SDK is loaded
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 export const PricingModal: React.FC = () => {
-  const { isPricingModalOpen, setIsPricingModalOpen, unlockProMembership, userPhone, verifyAndLoginPhone, userName } = useApp();
+  const { 
+    isPricingModalOpen, 
+    setIsPricingModalOpen, 
+    unlockProMembership, 
+    userPhone, 
+    verifyAndLoginPhone, 
+    userName 
+  } = useApp();
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [modalPhone, setModalPhone] = useState(userPhone || '');
   const [modalName, setModalName] = useState(userName || '');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Determine which step to show:
-  // Step 1: Login (if no phone linked)
-  // Step 2: Payment (if phone is linked)
+  // Sync phone & name if updated in context
+  useEffect(() => {
+    if (userPhone) setModalPhone(userPhone);
+    if (userName) setModalName(userName);
+  }, [userPhone, userName]);
+
+  // Determine if user has already linked a phone number
   const isLoggedIn = !!userPhone;
 
   if (!isPricingModalOpen) return null;
 
   // ─── STEP 1: Login Handler ─── //
-  const handleLoginStep = async () => {
+  const handleLoginStep = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
     const cleanPhone = modalPhone.replace(/[^0-9]/g, '').slice(-10);
     if (!cleanPhone || cleanPhone.length !== 10) {
       setErrorMsg('Please enter a valid 10-digit Mobile Number.');
@@ -57,125 +87,133 @@ export const PricingModal: React.FC = () => {
     try {
       const res = await verifyAndLoginPhone(cleanPhone, trimmedName);
       if (res.success) {
-        // Login successful — modal will auto-switch to Step 2 (Payment)
-        // because userPhone is now set
-        setErrorMsg(null);
+        if (res.isPro) {
+          setIsPricingModalOpen(false);
+          confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 } });
+        }
       } else {
         setErrorMsg(res.message || 'Login failed. Please try again.');
       }
-    } catch (err) {
-      setErrorMsg('Login error. Please try again.');
+    } catch {
+      setErrorMsg('Network error. Please check your internet connection.');
     } finally {
       setIsLoggingIn(false);
     }
   };
 
-  // ─── STEP 2: Payment Handler ─── //
-  const handleRazorpayPayment = () => {
+  // ─── STEP 2: Razorpay Payment Handler ─── //
+  const handleRazorpayPayment = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+
     const cleanPhone = (userPhone || modalPhone).replace(/[^0-9]/g, '').slice(-10);
     if (!cleanPhone || cleanPhone.length !== 10) {
-      setErrorMsg('Phone number missing. Please login first.');
+      setErrorMsg('Phone number missing. Please link your phone first.');
       return;
     }
 
     setIsProcessing(true);
     setErrorMsg(null);
 
+    // Ensure Razorpay SDK is ready
+    const isLoaded = await loadRazorpayScript();
+    if (!isLoaded || !window.Razorpay) {
+      setIsProcessing(false);
+      setErrorMsg('Razorpay payment gateway failed to load. Please check your internet connection.');
+      return;
+    }
+
     const livePrice = parseInt(localStorage.getItem('ssc_admin_pro_price') || '29', 10);
     const liveDays = parseInt(localStorage.getItem('ssc_admin_plan_days') || '60', 10);
-    const razorpayKey = (typeof window !== 'undefined' ? localStorage.getItem('ssc_razorpay_key_id') : '') || 'rzp_test_placeholder_key';
-    const merchantName = (typeof window !== 'undefined' ? localStorage.getItem('ssc_razorpay_merchant_name') : '') || 'SSC English Pro';
+    const razorpayKey = localStorage.getItem('ssc_razorpay_key_id') || 'rzp_test_TW4ruM3KntfeAG';
+    const merchantName = localStorage.getItem('ssc_razorpay_merchant_name') || 'SSC English Pro';
 
-    // If Razorpay SDK is loaded
-    if (typeof window !== 'undefined' && window.Razorpay) {
-      const options = {
-        key: razorpayKey,
-        amount: livePrice * 100, // Dynamic Amount in paise
-        currency: 'INR',
-        name: merchantName,
-        description: `${liveDays} Days Full Pro Access (18,000+ PYQs, AI Grammar & 120 Rules)`,
-        image: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>',
-        handler: function () {
-          setIsProcessing(false);
-          unlockProMembership(liveDays, cleanPhone); // Dynamic Days with Phone linking
-          confetti({
-            particleCount: 120,
-            spread: 80,
-            origin: { y: 0.5 }
-          });
-        },
-        prefill: {
-          name: userName || localStorage.getItem('ssc_user_name') || 'SSC Aspirant',
-          email: 'aspirant@sscenglish.com',
-          contact: cleanPhone
-        },
-        notes: {
-          plan: 'SSC_ENGLISH_PRO_2_MONTHS',
-          phone: cleanPhone
-        },
-        theme: {
-          color: '#4f46e5'
-        },
-        modal: {
-          ondismiss: function () {
-            setIsProcessing(false);
-          }
-        }
-      };
-
-      try {
-        const rzp = new window.Razorpay(options);
-        rzp.on('payment.failed', function (response: any) {
-          setIsProcessing(false);
-          setErrorMsg(response.error?.description || 'Payment could not be completed.');
+    const options = {
+      key: razorpayKey,
+      amount: livePrice * 100, // Amount in paise (₹29 = 2900 paise)
+      currency: 'INR',
+      name: merchantName,
+      description: `${liveDays} Days Full Pro Access (18,000+ PYQs & AI Grammar)`,
+      image: 'https://edupluscreation.github.io/ENGLISHPRO/app_icon_mobile.jpg',
+      handler: function (response: any) {
+        setIsProcessing(false);
+        unlockProMembership(liveDays, cleanPhone);
+        confetti({
+          particleCount: 150,
+          spread: 90,
+          origin: { y: 0.5 }
         });
-        rzp.open();
-      } catch (err) {
-        activateProSandbox(cleanPhone);
+      },
+      prefill: {
+        name: userName || modalName || 'SSC Aspirant',
+        email: 'aspirant@sscenglish.com',
+        contact: cleanPhone
+      },
+      notes: {
+        plan: 'SSC_ENGLISH_PRO_2_MONTHS',
+        phone: cleanPhone
+      },
+      theme: {
+        color: '#4f46e5'
+      },
+      modal: {
+        backdropclose: false,
+        escape: false,
+        confirm_close: true,
+        ondismiss: function () {
+          setIsProcessing(false);
+        }
       }
-    } else {
-      activateProSandbox(cleanPhone);
+    };
+
+    try {
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response: any) {
+        setIsProcessing(false);
+        setErrorMsg(response.error?.description || 'Payment was cancelled or failed.');
+      });
+      rzp.open();
+    } catch (err: any) {
+      setIsProcessing(false);
+      setErrorMsg('Could not open payment window: ' + (err?.message || 'Unknown error'));
     }
   };
 
-  const activateProSandbox = (cleanPhone: string) => {
-    setTimeout(() => {
-      setIsProcessing(false);
-      unlockProMembership(60, cleanPhone);
-      confetti({
-        particleCount: 120,
-        spread: 80,
-        origin: { y: 0.5 }
-      });
-    }, 600);
-  };
-
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0, 0, 0, 0.85)',
-      zIndex: 9999,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '16px'
-    }}>
+    <div 
+      onClick={() => setIsPricingModalOpen(false)}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(15, 23, 42, 0.8)',
+        backdropFilter: 'blur(6px)',
+        zIndex: 99999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '14px',
+        boxSizing: 'border-box'
+      }}
+    >
       <div 
+        onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
-          maxWidth: '460px',
+          maxWidth: '400px',
           background: 'var(--bg-surface)',
           border: '1px solid var(--border-color)',
           borderRadius: '20px',
-          padding: '24px 22px',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
+          padding: '20px 18px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.45)',
           position: 'relative',
-          maxHeight: '92vh',
-          overflowY: 'auto'
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          boxSizing: 'border-box'
         }}
       >
         {/* Close Button */}
@@ -183,154 +221,116 @@ export const PricingModal: React.FC = () => {
           onClick={() => setIsPricingModalOpen(false)}
           style={{
             position: 'absolute',
-            top: '16px',
-            right: '16px',
+            top: '14px',
+            right: '14px',
             background: 'var(--bg-surface-elevated)',
             border: '1px solid var(--border-color)',
             borderRadius: '50%',
-            width: '30px',
-            height: '30px',
+            width: '28px',
+            height: '28px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'var(--text-dim)',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            zIndex: 10
           }}
         >
-          <X size={16} />
+          <X size={15} />
         </button>
 
         {/* ═══════════════════════════════════════════ */}
-        {/* STEP 1: LOGIN (shown when user not logged in) */}
+        {/* STEP 1: LINK PHONE & NAME */}
         {/* ═══════════════════════════════════════════ */}
         {!isLoggedIn ? (
-          <>
-            {/* Step Indicator */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <div style={{
-                width: '24px', height: '24px', borderRadius: '50%',
-                background: 'var(--primary)', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '12px', fontWeight: 800
-              }}>1</div>
-              <div style={{ flex: 1, height: '2px', background: 'var(--border-color)' }} />
-              <div style={{
-                width: '24px', height: '24px', borderRadius: '50%',
-                background: 'var(--bg-surface-elevated)', color: 'var(--text-dim)',
-                border: '1px solid var(--border-color)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '12px', fontWeight: 800
-              }}>2</div>
-            </div>
-
-            {/* Login Header */}
-            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+          <div>
+            <div style={{ textAlign: 'center', marginBottom: '14px', paddingRight: '20px' }}>
               <div style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                background: 'var(--primary-light)',
+                gap: '4px',
+                background: 'rgba(79, 70, 229, 0.1)',
                 color: 'var(--primary)',
-                padding: '4px 12px',
+                padding: '3px 10px',
                 borderRadius: '9999px',
                 fontSize: '11px',
                 fontWeight: 800,
-                letterSpacing: '0.6px',
-                textTransform: 'uppercase',
-                marginBottom: '10px'
+                marginBottom: '8px'
               }}>
-                <Smartphone size={13} />
-                <span>Step 1: Login / Register</span>
+                <Smartphone size={12} />
+                <span>STEP 1 OF 2: SETUP ACCOUNT</span>
               </div>
-
-              <h2 style={{ fontSize: '19px', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 6px 0', lineHeight: 1.25 }}>
-                Login Required Before Payment
+              <h2 style={{ fontSize: '18px', fontWeight: 900, color: 'var(--text-main)', margin: '0 0 4px 0', fontFamily: "'Outfit', sans-serif" }}>
+                Link Mobile Number
               </h2>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-                Enter your name and 10-digit mobile number. This number will be linked to your Pro Pass.
+              <p style={{ fontSize: '12px', color: 'var(--text-dim)', margin: 0 }}>
+                Save your progress, test scores & active membership.
               </p>
             </div>
 
-            {/* Login Form */}
+            {/* Inputs Container */}
             <div style={{
               background: 'var(--bg-surface-elevated)',
               border: '1px solid var(--border-color)',
               borderRadius: '14px',
-              padding: '16px',
+              padding: '12px 14px',
               marginBottom: '14px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '12px'
+              gap: '10px'
             }}>
-              {/* Name Input */}
+              {/* Name Field */}
               <div>
-                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '6px' }}>
-                  👤 Your Name:
+                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '5px' }}>
+                  <User size={13} color="var(--primary)" />
+                  <span>Full Name</span>
                 </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-                    borderRadius: '8px', padding: '0 10px', height: '40px',
-                    color: 'var(--text-dim)'
-                  }}>
-                    <User size={15} />
-                  </div>
-                  <input
-                    type="text"
-                    maxLength={40}
-                    value={modalName}
-                    onChange={(e) => setModalName(e.target.value)}
-                    placeholder="Enter your name"
-                    style={{
-                      flex: 1,
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-surface)',
-                      color: 'var(--text-main)',
-                      fontSize: '13.5px',
-                      fontWeight: 700
-                    }}
-                  />
-                </div>
+                <input
+                  type="text"
+                  placeholder="e.g. Rahul Sharma"
+                  value={modalName}
+                  onChange={(e) => setModalName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: '9px',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--bg-primary)',
+                    color: 'var(--text-main)',
+                    fontSize: '13.5px',
+                    fontWeight: 600,
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
 
-              {/* Phone Input */}
+              {/* Phone Field */}
               <div>
-                <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '6px' }}>
-                  📱 Mobile Number:
+                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '5px' }}>
+                  <Smartphone size={13} color="var(--primary)" />
+                  <span>10-Digit Mobile Number</span>
                 </label>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    background: 'var(--bg-surface)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '8px',
-                    padding: '0 10px',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    color: 'var(--text-dim)'
-                  }}>
+                <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '9px', overflow: 'hidden' }}>
+                  <div style={{ padding: '9px 10px', background: 'var(--bg-surface-elevated)', borderRight: '1px solid var(--border-color)', fontSize: '12.5px', fontWeight: 800, color: 'var(--text-main)' }}>
                     +91
                   </div>
                   <input
                     type="tel"
                     maxLength={10}
+                    placeholder="9876543210"
                     value={modalPhone}
                     onChange={(e) => setModalPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="Enter 10-digit Mobile Number"
                     style={{
                       flex: 1,
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-surface)',
+                      padding: '9px 10px',
+                      border: 'none',
+                      background: 'transparent',
                       color: 'var(--text-main)',
-                      fontSize: '13px',
+                      fontSize: '14px',
                       fontWeight: 700,
-                      letterSpacing: '0.5px'
+                      outline: 'none',
+                      letterSpacing: '0.04em'
                     }}
                   />
                 </div>
@@ -338,151 +338,94 @@ export const PricingModal: React.FC = () => {
             </div>
 
             {errorMsg && (
-              <div style={{ background: 'var(--error-bg)', color: 'var(--error)', padding: '8px 10px', borderRadius: '8px', fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
+              <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '8px 10px', borderRadius: '8px', fontSize: '12px', marginBottom: '12px', textAlign: 'center', fontWeight: 600 }}>
                 {errorMsg}
               </div>
             )}
 
-            {/* Login CTA */}
+            {/* Continue Button */}
             <button
-              onClick={handleLoginStep}
+              onClick={() => handleLoginStep()}
               disabled={isLoggingIn}
               className="btn-primary"
               style={{
                 width: '100%',
-                padding: '12px',
+                padding: '11px',
                 fontSize: '14px',
                 fontWeight: 800,
-                borderRadius: '12px',
+                borderRadius: '11px',
                 justifyContent: 'center',
                 cursor: isLoggingIn ? 'wait' : 'pointer'
               }}
             >
               {isLoggingIn ? (
                 <>
-                  <Loader2 size={17} style={{ animation: 'spin 1s linear infinite' }} />
-                  <span>Verifying...</span>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Verifying Account...</span>
                 </>
               ) : (
                 <>
-                  <ArrowRight size={17} />
                   <span>Continue to Payment</span>
+                  <ArrowRight size={15} />
                 </>
               )}
             </button>
-
-            {/* Info note */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '10px', fontSize: '11px', color: 'var(--text-dim)' }}>
-              <ShieldCheck size={13} color="#10b981" />
-              <span>Your data is safe. Payment will proceed after login.</span>
-            </div>
-
-            {/* Spin animation for loader */}
-            <style>{`
-              @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-            `}</style>
-          </>
+          </div>
         ) : (
           /* ═══════════════════════════════════════════ */
-          /* STEP 2: PAYMENT (shown when user is logged in) */
+          /* STEP 2: INSTANT RAZORPAY PAYMENT CARD */
           /* ═══════════════════════════════════════════ */
-          <>
-            {/* Step Indicator */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <div style={{
-                width: '24px', height: '24px', borderRadius: '50%',
-                background: '#10b981', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '12px', fontWeight: 800
-              }}>✓</div>
-              <div style={{ flex: 1, height: '2px', background: '#10b981' }} />
-              <div style={{
-                width: '24px', height: '24px', borderRadius: '50%',
-                background: 'var(--primary)', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '12px', fontWeight: 800
-              }}>2</div>
-            </div>
-
-            {/* Logged-in user badge */}
-            <div style={{
-              background: 'rgba(16, 185, 129, 0.08)',
-              border: '1px solid rgba(16, 185, 129, 0.2)',
-              borderRadius: '10px',
-              padding: '8px 12px',
-              marginBottom: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '12.5px'
-            }}>
-              <CheckCircle2 size={15} color="#10b981" />
-              <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>
-                Logged in: <span style={{ color: '#10b981' }}>{userName || 'Student'}</span> • +91 {userPhone}
-              </span>
-            </div>
-
-            {/* Modal Header */}
-            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+          <div>
+            {/* Header Badge */}
+            <div style={{ textAlign: 'center', marginBottom: '14px' }}>
               <div style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                background: 'var(--primary-light)',
+                gap: '4px',
+                background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%)',
                 color: 'var(--primary)',
-                padding: '4px 12px',
+                padding: '3px 10px',
                 borderRadius: '9999px',
                 fontSize: '11px',
                 fontWeight: 800,
-                letterSpacing: '0.6px',
-                textTransform: 'uppercase',
-                marginBottom: '10px'
+                marginBottom: '6px'
               }}>
-                <Sparkles size={13} />
-                <span>Step 2: Complete Payment</span>
+                <Sparkles size={12} />
+                <span>UNLIMITED PRO PASS</span>
               </div>
-
-              <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 6px 0', lineHeight: 1.25 }}>
-                Unlock 18,000+ Official SSC PYQs & AI Tools
+              <h2 style={{ fontSize: '19px', fontWeight: 900, color: 'var(--text-main)', margin: '0 0 2px 0', fontFamily: "'Outfit', sans-serif" }}>
+                Unlock Complete Access
               </h2>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-                Unlimited access to all 600+ SSC mock sets, AI grammar checker & 120 golden rules for 60 days.
+              <p style={{ fontSize: '11.5px', color: 'var(--text-dim)', margin: 0 }}>
+                Logged in as <b>+91 {userPhone}</b>
               </p>
             </div>
 
-            {/* Pricing Plan Card */}
+            {/* Price Box */}
             <div style={{
-              background: 'var(--bg-surface-elevated)',
-              border: '2px solid var(--primary)',
+              background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(124, 58, 237, 0.08) 100%)',
+              border: '1.5px solid var(--primary)',
               borderRadius: '14px',
-              padding: '14px 16px',
-              marginBottom: '16px',
+              padding: '12px 14px',
+              marginBottom: '14px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px'
+              justifyContent: 'space-between'
             }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                  <span style={{ fontSize: '26px', fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>
-                    ₹{parseInt(localStorage.getItem('ssc_admin_pro_price') || '29', 10)}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                  <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--primary)', fontFamily: "'Outfit', sans-serif" }}>
+                    ₹{localStorage.getItem('ssc_admin_pro_price') || '29'}
                   </span>
-                  <span style={{ fontSize: '13px', color: 'var(--text-dim)', textDecoration: 'line-through' }}>
-                    ₹{parseInt(localStorage.getItem('ssc_admin_orig_price') || '299', 10)}
+                  <span style={{ fontSize: '12px', color: 'var(--text-dim)', textDecoration: 'line-through' }}>
+                    ₹299
                   </span>
-                  <span style={{
-                    fontSize: '11px',
-                    fontWeight: 800,
-                    color: '#10b981',
-                    background: 'rgba(16, 185, 129, 0.15)',
-                    padding: '2px 6px',
-                    borderRadius: '6px'
-                  }}>
-                    {Math.round(((parseInt(localStorage.getItem('ssc_admin_orig_price') || '299', 10) - parseInt(localStorage.getItem('ssc_admin_pro_price') || '29', 10)) / parseInt(localStorage.getItem('ssc_admin_orig_price') || '299', 10)) * 100)}% OFF
+                  <span style={{ fontSize: '10.5px', fontWeight: 800, background: '#10b981', color: '#ffffff', padding: '1px 6px', borderRadius: '4px' }}>
+                    90% OFF
                   </span>
                 </div>
-                <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: 600, marginTop: '3px' }}>
-                  ⚡ {parseInt(localStorage.getItem('ssc_admin_plan_days') || '60', 10)} Days Unlimited Pass
+                <div style={{ fontSize: '11.5px', color: 'var(--text-dim)', fontWeight: 600, marginTop: '2px' }}>
+                  ⚡ {localStorage.getItem('ssc_admin_plan_days') || '60'} Days Unlimited All-Access
                 </div>
               </div>
 
@@ -494,35 +437,34 @@ export const PricingModal: React.FC = () => {
                 color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
+                justifyContent: 'center'
               }}>
                 <Check size={14} strokeWidth={3} />
               </div>
             </div>
 
-            {/* Features Checklist */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+            {/* Features (Compact) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
               {[
-                'Unlock all 18,000+ Official SSC PYQs & 600+ Mock Sets',
-                'Full 120 Golden Grammar Rules with practice tests',
-                'Unlimited AI Grammar & OCR Image Scanner',
-                'Mistake Notebook & Starred Bookmarks revision'
+                'All 18,000+ Official SSC PYQs (CGL, CHSL, MTS)',
+                '120 Golden Grammar Rules with Hindi Notes',
+                'Unlimited AI Grammar & Sentence Scanner',
+                '100% Ad-Free & Offline Supported'
               ].map((feat, fIdx) => (
-                <div key={fIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-main)' }}>
-                  <CheckCircle2 size={15} color="#10b981" style={{ flexShrink: 0 }} />
+                <div key={fIdx} style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: 'var(--text-main)' }}>
+                  <CheckCircle2 size={14} color="#10b981" style={{ flexShrink: 0 }} />
                   <span>{feat}</span>
                 </div>
               ))}
             </div>
 
             {errorMsg && (
-              <div style={{ background: 'var(--error-bg)', color: 'var(--error)', padding: '8px 10px', borderRadius: '8px', fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
+              <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '8px 10px', borderRadius: '8px', fontSize: '12px', marginBottom: '10px', textAlign: 'center', fontWeight: 600 }}>
                 {errorMsg}
               </div>
             )}
 
-            {/* Payment CTA Button */}
+            {/* Direct Pay Button */}
             <button
               onClick={handleRazorpayPayment}
               disabled={isProcessing}
@@ -534,19 +476,29 @@ export const PricingModal: React.FC = () => {
                 fontWeight: 800,
                 borderRadius: '12px',
                 justifyContent: 'center',
-                cursor: isProcessing ? 'wait' : 'pointer'
+                cursor: isProcessing ? 'wait' : 'pointer',
+                boxShadow: '0 4px 14px rgba(79, 70, 229, 0.35)'
               }}
             >
-              <CreditCard size={17} />
-              <span>{isProcessing ? 'Processing...' : `Pay ₹${localStorage.getItem('ssc_admin_pro_price') || '29'} & Unlock Pro Pass`}</span>
+              {isProcessing ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Opening Razorpay Gateway...</span>
+                </>
+              ) : (
+                <>
+                  <CreditCard size={16} />
+                  <span>Pay ₹{localStorage.getItem('ssc_admin_pro_price') || '29'} & Unlock Pro</span>
+                </>
+              )}
             </button>
 
-            {/* Security Trust Note */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '10px', fontSize: '11px', color: 'var(--text-dim)' }}>
+            {/* Trust badge */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginTop: '10px', fontSize: '11px', color: 'var(--text-dim)' }}>
               <ShieldCheck size={13} color="#10b981" />
-              <span>100% Safe Payment via UPI, GPay, Paytm & Cards</span>
+              <span>100% Secure via UPI, GPay, PhonePe, Cards & NetBanking</span>
             </div>
-          </>
+          </div>
         )}
 
       </div>

@@ -129,7 +129,7 @@ export const AdminPanel: React.FC = () => {
     return parseInt(localStorage.getItem('ssc_admin_plan_days') || '60', 10);
   });
   const [razorpayKeyId, setRazorpayKeyId] = useState<string>(() => {
-    return localStorage.getItem('ssc_razorpay_key_id') || '';
+    return localStorage.getItem('ssc_razorpay_key_id') || 'rzp_test_TW4ruM3KntfeAG';
   });
   const [razorpayMerchantName, setRazorpayMerchantName] = useState<string>(() => {
     return localStorage.getItem('ssc_razorpay_merchant_name') || 'SSC English Pro';

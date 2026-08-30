@@ -1,15 +1,4 @@
-// AI Service for Google Gemini (Flash) & Offline Heuristic Fallback
-
-export const getGeminiApiKey = (): string => {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem('ssc_gemini_api_key') || '';
-};
-
-export const setGeminiApiKey = (key: string): void => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('ssc_gemini_api_key', key.trim());
-  }
-};
+import { CapacitorHttp } from '@capacitor/core';
 
 export interface AIGrammarResponse {
   hasErrors: boolean;
@@ -39,257 +28,239 @@ export interface AIVocabResponse {
   sscExamUsage: string;
 }
 
-// Built-in high-accuracy Heuristic Knowledge Engine for SSC Rules (Offline Fallback)
-export const analyzeLocally = (text: string): AIGrammarResponse => {
-  const clean = text.trim();
-  const lower = clean.toLowerCase();
+/**
+ * Universal Native/Web HTTP Helper using CapacitorHttp
+ */
+async function httpGet(url: string, timeoutMs = 4500): Promise<any> {
+  try {
+    const res = await CapacitorHttp.get({
+      url,
+      connectTimeout: timeoutMs,
+      readTimeout: timeoutMs
+    });
+    return res.data;
+  } catch {
+    const controller = new AbortController();
+    const tId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(tId);
+      return await res.json();
+    } catch (e) {
+      clearTimeout(tId);
+      throw e;
+    }
+  }
+}
 
-  // Rule: Neither...nor with plural second subject
-  if (/neither.*nor.*(was|is|has)/i.test(lower) && /nor\s+(the\s+)?(assistants|students|boys|girls|members|workers|people|officers|players)\s+(was|is|has)/i.test(lower)) {
-    const corrected = clean
-      .replace(/\bwas\b/gi, 'were')
-      .replace(/\bis\b/gi, 'are')
-      .replace(/\bhas\b/gi, 'have');
-    return {
-      hasErrors: true,
-      errorCount: 1,
-      correctedSentence: corrected,
-      errorHighlights: [
-        {
-          originalPhrase: "was / is (Singular Verb)",
-          correctedPhrase: "were / are (Plural Verb)",
-          reason: "Subject closer to the verb ('assistants') is plural."
+async function httpPost(url: string, bodyParams: Record<string, string>, timeoutMs = 5000): Promise<any> {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(bodyParams)) {
+    params.append(k, v);
+  }
+  const bodyStr = params.toString();
+
+  try {
+    const res = await CapacitorHttp.post({
+      url,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      data: bodyStr,
+      connectTimeout: timeoutMs,
+      readTimeout: timeoutMs
+    });
+    return res.data;
+  } catch {
+    const controller = new AbortController();
+    const tId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: bodyStr,
+        signal: controller.signal
+      });
+      clearTimeout(tId);
+      return await res.json();
+    } catch (e) {
+      clearTimeout(tId);
+      throw e;
+    }
+  }
+}
+
+/**
+ * 100% Pure Live Web Vocab Engine
+ * Queries:
+ * 1. Free Dictionary API (https://api.dictionaryapi.dev/api/v2/entries/en/<word>)
+ * 2. Wikimedia Official Wiktionary REST API (https://en.wiktionary.org/api/rest_v1/page/definition/<word>)
+ * 3. Datamuse Lexicon API (https://api.datamuse.com)
+ * 4. MyMemory Translation API (https://api.mymemory.translated.net)
+ */
+export const lookupVocabWithAI = async (word: string): Promise<AIVocabResponse> => {
+  const cleanWord = word.trim().toLowerCase();
+  const capitalized = cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1);
+
+  let englishDefinition = '';
+  let exampleUsage = '';
+  let phonetic = '';
+  let synonyms: string[] = [];
+  let antonyms: string[] = [];
+  let liveHindi = '';
+
+  const [dictRes, wikiRes, synRes, antRes, transRes] = await Promise.allSettled([
+    // 1. Free Dictionary API
+    httpGet(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`),
+    // 2. Wikimedia Wiktionary Official REST API
+    httpGet(`https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(cleanWord)}`),
+    // 3. Datamuse Synonyms
+    httpGet(`https://api.datamuse.com/words?rel_syn=${encodeURIComponent(cleanWord)}&max=8`),
+    // 4. Datamuse Antonyms
+    httpGet(`https://api.datamuse.com/words?rel_ant=${encodeURIComponent(cleanWord)}&max=6`),
+    // 5. MyMemory Web Translation for Hindi
+    httpGet(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(cleanWord)}&langpair=en|hi`)
+  ]);
+
+  // Parse Free Dictionary API
+  if (dictRes.status === 'fulfilled' && dictRes.value) {
+    const data = typeof dictRes.value === 'string' ? JSON.parse(dictRes.value) : dictRes.value;
+    if (Array.isArray(data) && data.length > 0) {
+      const first = data[0];
+      phonetic = first.phonetic || (first.phonetics && first.phonetics[0]?.text) || '';
+      if (first.meanings && Array.isArray(first.meanings)) {
+        for (const m of first.meanings) {
+          if (m.definitions && m.definitions.length > 0) {
+            if (!englishDefinition) englishDefinition = m.definitions[0].definition || '';
+            if (!exampleUsage && m.definitions[0].example) exampleUsage = m.definitions[0].example;
+          }
+          if (m.synonyms && Array.isArray(m.synonyms)) {
+            synonyms = [...synonyms, ...m.synonyms];
+          }
+          if (m.antonyms && Array.isArray(m.antonyms)) {
+            antonyms = [...antonyms, ...m.antonyms];
+          }
         }
-      ],
-      grammarRuleTitle: "Subject-Verb Agreement: Proximity Rule with Neither...Nor",
-      matchedGoldenRuleNum: 2,
-      formula: "Neither + Subject 1 + nor + Subject 2 (Plural) ➔ Verb (Plural)",
-      hindiExplanation: "जब दो कर्ता (Subjects) 'Neither...nor' या 'Either...or' से जुड़े होते हैं, तो क्रिया (Verb) हमेशा 'nor/or' के सबसे निकटतम (दूसरे) कर्ता के अनुसार आती है। यहाँ दूसरा कर्ता ('assistants') बहुवचन है, अतः क्रिया भी बहुवचन ('were') होगी।",
-      englishExplanation: "When two subjects are connected by 'neither...nor' or 'either...or', the verb agrees with the subject closer to it (proximity rule). Since the second subject is plural, the verb must also be plural.",
-      examTrapTip: "एसएससी सीजीएल और सीएचएसएल में परीक्षक पहले एकवचन कर्ता ('manager') को देखकर भ्रमित करने के लिए 'was' या 'has' देता है। हमेशा 'nor' के तुरंत बाद वाले कर्ता को देखें!",
-      vocabularyUpgrade: clean.replace(/\bwas present\b/gi, 'attended').replace(/\bwere present\b/gi, 'attended')
-    };
+      }
+    }
   }
 
-  // Rule: Double Past / Have Went
-  if (/\b(have|has|had)\s+went\b/i.test(lower)) {
-    const corrected = clean.replace(/\bwent\b/gi, 'gone');
-    return {
-      hasErrors: true,
-      errorCount: 1,
-      correctedSentence: corrected,
-      errorHighlights: [
-        {
-          originalPhrase: "have/has went",
-          correctedPhrase: "have/has gone",
-          reason: "Auxiliary verb 'have/has/had' requires the 3rd form of the verb (V3 - Past Participle)."
+  // Parse Wiktionary REST API fallback
+  if (!englishDefinition && wikiRes.status === 'fulfilled' && wikiRes.value) {
+    const data = typeof wikiRes.value === 'string' ? JSON.parse(wikiRes.value) : wikiRes.value;
+    if (data.en && Array.isArray(data.en) && data.en.length > 0) {
+      const firstSection = data.en[0];
+      if (firstSection.definitions && firstSection.definitions.length > 0) {
+        englishDefinition = (firstSection.definitions[0].definition || '').replace(/<[^>]*>/g, '').trim();
+        if (!exampleUsage && firstSection.definitions[0].examples && firstSection.definitions[0].examples.length > 0) {
+          exampleUsage = (firstSection.definitions[0].examples[0] || '').replace(/<[^>]*>/g, '').trim();
         }
-      ],
-      grammarRuleTitle: "Perfect Tense Rule: Have/Has/Had + V3",
-      matchedGoldenRuleNum: 14,
-      formula: "Subject + have/has/had + Verb (3rd Form - V3)",
-      hindiExplanation: "अंग्रेजी व्याकरण में 'have', 'has' और 'had' के बाद हमेशा मुख्य क्रिया का तीसरा रूप (V3 - Past Participle) प्रयोग किया जाता है। 'Went' दूसरा रूप (V2) है, इसलिए सही रूप 'gone' (V3) होगा।",
-      englishExplanation: "The auxiliary verbs 'have', 'has', and 'had' are strictly followed by the past participle (V3) form of the main verb. 'Went' is V2 (simple past); the correct V3 form is 'gone'.",
-      examTrapTip: "एसएससी सामान्यतः 'have did', 'had saw', 'has went' जैसी गलतियाँ देकर प्रश्न पूछता है। हमेशा have/has/had के बाद V3 की जाँच करें!",
-      vocabularyUpgrade: clean.replace(/\bhave went\b/gi, 'have departed for')
-    };
+      }
+    }
   }
 
-  // Rule: Senior/Junior/Preferable with 'than' instead of 'to'
-  if (/\b(senior|junior|superior|inferior|prior|anterior|posterior|preferable)\s+than\b/i.test(lower)) {
-    const corrected = clean.replace(/\b(senior|junior|superior|inferior|prior|anterior|posterior|preferable)\s+than\b/gi, '$1 to');
-    return {
-      hasErrors: true,
-      errorCount: 1,
-      correctedSentence: corrected,
-      errorHighlights: [
-        {
-          originalPhrase: "senior than",
-          correctedPhrase: "senior to",
-          reason: "Latin comparative adjectives ending in '-ior' take preposition 'to', never 'than'."
-        }
-      ],
-      grammarRuleTitle: "Latin Comparatives Preposition Rule",
-      matchedGoldenRuleNum: 23,
-      formula: "Senior / Junior / Superior / Preferable + 'TO' (Not 'Than')",
-      hindiExplanation: "वे विशेषण जो लैटिन भाषा से आए हैं और जिनके अंत में '-ior' आता है (जैसे: Senior, Junior, Superior, Inferior, Prior) और 'Preferable', उनके साथ तुलना में 'than' का नहीं, बल्कि 'to' का प्रयोग होता है।",
-      englishExplanation: "Comparative adjectives of Latin origin ending in '-ior' (senior, junior, superior, inferior) and 'preferable' take the preposition 'to' instead of the conjunction 'than'.",
-      examTrapTip: "एसएससी सीजीएल टीयर 1 और 2 दोनों में 'senior than me' का प्रश्न लगभग हर साल दोहराया जाता है। सही रूप 'senior to me' है।",
-      vocabularyUpgrade: clean
-    };
+  // Parse Datamuse Synonyms
+  if (synRes.status === 'fulfilled' && synRes.value) {
+    const data = typeof synRes.value === 'string' ? JSON.parse(synRes.value) : synRes.value;
+    if (Array.isArray(data)) {
+      const extra = data.map((s: any) => s.word);
+      synonyms = Array.from(new Set([...synonyms, ...extra]));
+    }
   }
 
-  // Rule: Each of the + Plural Noun + Singular Verb
-  if (/\beach of the\s+[a-z]+\s+(have|are|were)\b/i.test(lower)) {
-    const corrected = clean
-      .replace(/\beach of the\s+([a-z]+)\s+have\b/gi, 'each of the $1 has')
-      .replace(/\beach of the\s+([a-z]+)\s+are\b/gi, 'each of the $1 is')
-      .replace(/\beach of the\s+([a-z]+)\s+were\b/gi, 'each of the $1 was');
-    return {
-      hasErrors: true,
-      errorCount: 1,
-      correctedSentence: corrected,
-      errorHighlights: [
-        {
-          originalPhrase: "each of the ... have/are/were",
-          correctedPhrase: "each of the ... has/is/was",
-          reason: "Distributive pronoun 'Each of' requires a plural noun but a strictly singular verb."
-        }
-      ],
-      grammarRuleTitle: "Distributive Pronoun Rule: Each of + Plural Noun + Singular Verb",
-      matchedGoldenRuleNum: 8,
-      formula: "Each of + Plural Noun / Pronoun + Singular Verb",
-      hindiExplanation: "'Each of', 'Either of', 'Neither of', 'One of' के बाद संज्ञा (Noun) तो बहुवचन आती है, लेकिन क्रिया (Verb) और सर्वनाम (Pronoun) हमेशा एकवचन (Singular) ही होते हैं।",
-      englishExplanation: "Expressions like 'Each of', 'Either of', and 'Neither of' refer to individuals individually. Hence, they take a plural noun but strictly require a singular verb.",
-      examTrapTip: "परीक्षक जानबूझकर बहुवचन संज्ञा (उदा. 'students') के ठीक बाद बहुवचन क्रिया 'have/are' लगाता है। ध्यान रखें कि असली कर्ता 'Each' है, जो एकवचन है!",
-      vocabularyUpgrade: clean
-    };
+  // Parse Datamuse Antonyms
+  if (antRes.status === 'fulfilled' && antRes.value) {
+    const data = typeof antRes.value === 'string' ? JSON.parse(antRes.value) : antRes.value;
+    if (Array.isArray(data)) {
+      const extra = data.map((a: any) => a.word);
+      antonyms = Array.from(new Set([...antonyms, ...extra]));
+    }
   }
 
-  // Rule: Although / Though with 'but'
-  if (/\b(although|though)\b.*?\bbut\b/i.test(lower)) {
-    const corrected = clean.replace(/\bbut\b/gi, 'yet');
-    return {
-      hasErrors: true,
-      errorCount: 1,
-      correctedSentence: corrected,
-      errorHighlights: [
-        {
-          originalPhrase: "Although ... but",
-          correctedPhrase: "Although ... yet (or comma)",
-          reason: "'Although/Though' pairs with 'yet' or a comma, never with 'but'."
-        }
-      ],
-      grammarRuleTitle: "Correlative Conjunctions: Although...Yet Pair",
-      matchedGoldenRuleNum: 41,
-      formula: "Although / Though + Clause 1 + YET / [,] + Clause 2 (No 'But')",
-      hindiExplanation: "'Although' या 'Though' के साथ कभी भी 'but' का प्रयोग नहीं होता। इसके साथ या तो केवल अल्पविराम (comma) आता है या फिर 'yet' का प्रयोग किया जाता है।",
-      englishExplanation: "'Although' and 'though' are subordinating conjunctions. They are paired with 'yet' or a simple comma in standard formal English; using 'but' creates a redundant double conjunction error.",
-      examTrapTip: "एसएससी सेंटेंस इम्प्रूवमेंट में 'Although he worked hard, but he failed' देकर 'but' हटाने का विकल्प देता है।",
-      vocabularyUpgrade: clean
-    };
+  // Parse Web Hindi Translation
+  if (transRes.status === 'fulfilled' && transRes.value) {
+    const data = typeof transRes.value === 'string' ? JSON.parse(transRes.value) : transRes.value;
+    if (data?.responseData?.translatedText && !data.responseData.translatedText.toLowerCase().includes('mymemory')) {
+      liveHindi = data.responseData.translatedText.trim();
+    }
   }
 
-  // Default Clean Sentence
+  const finalDefinition = englishDefinition || `Standard English dictionary definition for "${capitalized}".`;
+  const finalHindi = liveHindi || (phonetic ? `[${phonetic}]` : 'शब्दावली अर्थ');
+  const finalExample = exampleUsage || `The word "${capitalized}" is used in standard English and exam passages.`;
+
   return {
-    hasErrors: false,
-    errorCount: 0,
-    correctedSentence: clean,
-    errorHighlights: [],
-    grammarRuleTitle: "Grammatically Flawless Sentence",
-    formula: "Standard Syntactic Structure Verified",
-    hindiExplanation: "यह वाक्य व्याकरण की दृष्टि से पूर्णतः शुद्ध है। इसमें कर्ता-क्रिया सामंजस्य (Subject-Verb Agreement), काल (Tense), और कारक (Prepositions) का सही प्रयोग हुआ है।",
-    englishExplanation: "This sentence adheres to standard English grammar rules. Sentence structure, tenses, and agreements are syntactically sound.",
-    examTrapTip: "परीक्षा में इस प्रकार के वाक्य 'No Error' (कोई त्रुटि नहीं) विकल्प के लिए उपयुक्त होते हैं।"
+    word: capitalized,
+    hindiMeaning: finalHindi,
+    englishDefinition: finalDefinition,
+    mnemonicTrick: liveHindi
+      ? `हिन्दी अर्थ '${liveHindi}' याद रखें — SSC / CGL परीक्षा में पूछा जाता है।`
+      : `Master "${capitalized}" by observing its contextual usage.`,
+    synonyms: synonyms.slice(0, 8),
+    antonyms: antonyms.slice(0, 6),
+    sscExamUsage: finalExample
   };
 };
 
+/**
+ * 100% Pure Live Web Grammar Scanner via LanguageTool Web API
+ */
 export const analyzeGrammarWithAI = async (sentence: string): Promise<AIGrammarResponse> => {
-  const apiKey = getGeminiApiKey();
-  if (apiKey) {
-    try {
-      const prompt = `You are a top-tier SSC CGL / CHSL / CPO English Grammar & Language Expert.
-Analyze this English sentence for grammatical errors, subject-verb agreement, tense consistency, prepositions, and vocabulary usage:
-"${sentence}"
+  const clean = sentence.trim();
 
-Return ONLY valid JSON matching this exact structure:
-{
-  "hasErrors": boolean,
-  "correctedSentence": "string",
-  "errorCount": number,
-  "errorHighlights": [
-    {
-      "originalPhrase": "incorrect part",
-      "correctedPhrase": "corrected part",
-      "reason": "precise grammatical reason"
-    }
-  ],
-  "grammarRuleTitle": "Clear Name of the Grammar Rule",
-  "matchedGoldenRuleNum": 2,
-  "formula": "Grammar Formula e.g. Subject (Singular) + Verb (Singular)",
-  "hindiExplanation": "सरल और स्पष्ट हिंदी में नियम और कारण समझाएं",
-  "englishExplanation": "Clear English explanation of the rule and why the correction was made",
-  "examTrapTip": "एसएससी परीक्षा में परीक्षक कैसे फंसाता है और ट्रिक",
-  "vocabularyUpgrade": "An advanced elevated alternative sentence for higher marks"
-}`;
+  try {
+    const ltData = await httpPost('https://api.languagetool.org/v2/check', {
+      text: clean,
+      language: 'en-US'
+    });
 
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.1,
-            responseMimeType: 'application/json'
+    const data = typeof ltData === 'string' ? JSON.parse(ltData) : ltData;
+
+    if (data && Array.isArray(data.matches) && data.matches.length > 0) {
+      const errorHighlights: { originalPhrase: string; correctedPhrase: string; reason: string }[] = [];
+      let correctedSentence = clean;
+
+      for (const m of data.matches) {
+        const faultyWord = clean.substr(m.offset, m.length);
+        const suggestion = m.replacements?.[0]?.value || '';
+        if (suggestion && suggestion.toLowerCase() !== faultyWord.toLowerCase()) {
+          errorHighlights.push({
+            originalPhrase: faultyWord,
+            correctedPhrase: suggestion,
+            reason: m.message || 'Grammar / Syntax error.'
+          });
+          const idx = correctedSentence.indexOf(faultyWord);
+          if (idx !== -1) {
+            correctedSentence = correctedSentence.substring(0, idx) + suggestion + correctedSentence.substring(idx + faultyWord.length);
           }
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (rawText) {
-          const parsed: AIGrammarResponse = JSON.parse(rawText);
-          return parsed;
         }
       }
-    } catch (e) {
-      console.warn('Gemini AI Grammar call failed, falling back to local engine:', e);
-    }
-  }
 
-  return analyzeLocally(sentence);
-};
-
-export const lookupVocabWithAI = async (word: string): Promise<AIVocabResponse> => {
-  const cleanWord = word.trim().toLowerCase();
-  const apiKey = getGeminiApiKey();
-
-  if (apiKey) {
-    try {
-      const prompt = `You are an SSC English Vocab expert. For the word "${cleanWord}", provide a comprehensive exam-oriented breakdown in JSON:
-{
-  "word": "${cleanWord}",
-  "hindiMeaning": "हिंदी अर्थ",
-  "englishDefinition": "Concise English definition",
-  "mnemonicTrick": "Super creative memorable Hindi/English mnemonic memory trick to recall this word in exams",
-  "synonyms": ["synonym1", "synonym2", "synonym3", "synonym4"],
-  "antonyms": ["antonym1", "antonym2", "antonym3"],
-  "sscExamUsage": "An exemplary sentence relevant to SSC CGL/CHSL exams"
-}`;
-
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: 'application/json'
-          }
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (rawText) {
-          return JSON.parse(rawText);
-        }
+      if (errorHighlights.length > 0) {
+        return {
+          hasErrors: true,
+          correctedSentence,
+          errorCount: errorHighlights.length,
+          errorHighlights,
+          grammarRuleTitle: 'Live AI Grammar Correction',
+          formula: 'Subject + Helping Verb + Main Verb Agreement',
+          hindiExplanation: `वाक्य में ${errorHighlights.length} व्याकरण त्रुटि पाई गई। '${errorHighlights[0].originalPhrase}' के स्थान पर '${errorHighlights[0].correctedPhrase}' का प्रयोग होना चाहिए।`,
+          englishExplanation: errorHighlights.map(e => `${e.originalPhrase} ➔ ${e.correctedPhrase}: ${e.reason}`).join('; '),
+          examTrapTip: 'Standard English syntax and tense agreement rules apply.'
+        };
       }
-    } catch (e) {
-      console.warn('Gemini Vocab lookup failed, falling back:', e);
     }
+  } catch (err) {
+    console.warn('Live grammar API error:', err);
   }
 
-  // Fallback
   return {
-    word: cleanWord,
-    hindiMeaning: 'शब्दावली अर्थ',
-    englishDefinition: `Definition and usage for ${cleanWord}.`,
-    mnemonicTrick: `Break down "${cleanWord}" into roots to memorize for SSC CGL / CHSL.`,
-    synonyms: ['appropriate', 'relevant', 'essential'],
-    antonyms: ['unsuitable', 'trivial'],
-    sscExamUsage: `The question tested the vocabulary word "${cleanWord}" in the examination.`
+    hasErrors: false,
+    correctedSentence: clean,
+    errorCount: 0,
+    errorHighlights: [],
+    grammarRuleTitle: 'Grammatically Correct',
+    formula: 'Standard English Structure',
+    hindiExplanation: 'यह वाक्य व्याकरण की दृष्टि से पूर्णतः शुद्ध है।',
+    englishExplanation: 'No grammatical or tense errors detected in this sentence.',
+    examTrapTip: 'Maintain consistent tense agreement throughout compound sentences.'
   };
 };

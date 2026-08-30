@@ -1,4 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+/* ═══ RAZORPAY MODAL & ANDROID SAFE AREA INSET FIX ═══ */
+.razorpay-container,
+.razorpay-checkout-frame,
+iframe[name^="razorpay"] {
+  padding-bottom: env(safe-area-inset-bottom, 36px) !important;
+  box-sizing: border-box !important;
+}
 
 :root {
   --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -138,29 +144,44 @@ html.dark {
 }
 
 html {
-  overflow-x: hidden;
-  overflow-y: auto;
-  scroll-behavior: smooth;
   width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: auto;
+  -webkit-text-size-adjust: 100%;
+  touch-action: pan-y;
 }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-muted);  /* Default body = Zinc 400 (#A1A1AA) */
-  min-height: 100vh;
+  min-height: 100%;
+  width: 100%;
   line-height: 1.5;
   font-size: 14px;            /* Primary Body: 14px */
   font-weight: 400;           /* Regular weight */
   transition: background-color 0.2s ease, color 0.2s ease;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
   -webkit-font-smoothing: antialiased;
+  touch-action: pan-y;
+}
+
+#root {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
 }
 
 h1 {
   font-family: 'Inter', sans-serif;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.02em;
@@ -169,7 +190,7 @@ h1 {
 
 h2 {
   font-family: 'Inter', sans-serif;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.35;
   letter-spacing: -0.01em;
@@ -178,7 +199,7 @@ h2 {
 
 h3 {
   font-family: 'Inter', sans-serif;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.35;
   color: var(--text-main);
@@ -186,27 +207,19 @@ h3 {
 
 h4, h5, h6 {
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.5;
   color: var(--text-main);
 }
 
-p, span, div, li, strong, b, em, h1, h2, h3, h4, h5, h6, a, button {
+p, span, div, li, strong, b, em, h1, h2, h3, h4, h5, h6, a {
   overflow-wrap: break-word;
   word-break: normal;
 }
 
-html, body, #root, main {
-  max-width: 100vw;
-  width: 100%;
-  overflow-x: hidden !important;
-  box-sizing: border-box;
-}
-
 main {
   width: 100%;
-  max-width: 100vw;
   box-sizing: border-box;
 }
 
@@ -223,8 +236,8 @@ code, pre {
 
 button, input, textarea, select {
   font-family: 'Inter', sans-serif;
-  font-size: 16px;            /* Button Text: 16px */
-  font-weight: 700;           /* Bold */
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   border: none;
   max-width: 100%;
@@ -269,6 +282,9 @@ a {
   letter-spacing: var(--tracking-wide);
   line-height: var(--leading-none);
   text-transform: uppercase;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  flex-shrink: 0 !important;
 }
 
 .badge-primary {
@@ -398,20 +414,81 @@ p.desktop-only, span.desktop-only {
   display: none !important;
 }
 
-/* Bottom Navigation Bar (Fixed, solid, NO blur) */
+/* ═══ NATIVE ANDROID MOBILE APP SHELL ARCHITECTURE ═══ */
+.app-android-shell {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  background-color: var(--bg-primary);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.08);
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y;
+}
+
+/* Native Android Top App Bar */
+header.android-app-header {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  min-height: calc(54px + env(safe-area-inset-top, 0px));
+  padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
+  padding-bottom: 6px;
+  padding-left: 14px;
+  padding-right: 14px;
+  z-index: 999;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Native Android Bottom Navigation Bar */
 .mobile-bottom-nav {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
-  height: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  height: calc(56px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-top: 4px;
   background: var(--bg-header);
   border-top: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-around;
   z-index: 999;
-  max-width: 100vw;
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1), opacity 0.18s ease;
+}
+
+body.keyboard-open .mobile-bottom-nav {
+  transform: translate(-50%, 100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-height: 480px) {
+  .mobile-bottom-nav {
+    transform: translate(-50%, 100%);
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 .mobile-nav-btn {
@@ -425,39 +502,45 @@ p.desktop-only, span.desktop-only {
   border: none;
   color: var(--text-dim);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   position: relative;
   flex: 1;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  padding: 4px 0;
+}
+
+.mobile-nav-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 26px;
+  border-radius: 14px;
+  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .mobile-nav-btn.active {
   color: var(--primary);
+  font-weight: 800;
 }
 
-.mobile-nav-btn.active::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 24px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--primary);
+.mobile-nav-btn.active .mobile-nav-icon-container {
+  background: var(--primary-light);
+  color: var(--primary);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
 }
 
 .mobile-nav-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.94);
 }
 
 .mobile-nav-badge {
   position: absolute;
   top: 2px;
-  right: 22%;
+  right: 18%;
   background: var(--error);
   color: #ffffff;
   font-size: 0.58rem;
@@ -522,29 +605,91 @@ p.desktop-only, span.desktop-only {
 
 @media (max-width: 600px) {
   .dashboard-container {
-    padding: 14px 12px 32px 12px;
+    padding: 12px 10px 32px 10px;
   }
   
   .dashboard-stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 1px;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
   }
   
   .dashboard-stats-card {
-    padding: 14px 8px;
+    padding: 12px 6px;
   }
 
   .dashboard-tools-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    gap: 6px;
+  }
+}
+
+/* ═══ 100% BULLETPROOF DYNAMIC MOBILE FIT RULES ═══ */
+@media (max-width: 480px) {
+  :root {
+    --text-sm: 0.82rem;
+    --text-base: 0.90rem;
+    --text-md: 0.98rem;
+  }
+
+  body {
+    font-size: 13.5px;
+  }
+
+  /* Safe container widths */
+  .dashboard-container, 
+  .quiz-container-grid, 
+  .vocab-container, 
+  .grammar-container {
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Prevent text clipping / line overlapping */
+  p, span, div, h1, h2, h3, h4, h5, h6, a, button {
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+    min-width: 0 !important;
+  }
+
+  /* Compact option choices on small screens */
+  .quiz-option-item {
+    padding: 9px 10px !important;
+    font-size: 13px !important;
+  }
+
+  /* Safe modals */
+  .modal-container {
+    width: calc(100vw - 20px) !important;
+    max-width: 100% !important;
+    margin: 10px auto !important;
+    padding: 16px !important;
+  }
+}
+
+/* Ultra-compact screens (e.g. 320px - 360px phones) */
+@media (max-width: 360px) {
+  .dashboard-tools-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .mobile-bottom-nav button span {
+    font-size: 9.5px !important;
+  }
+
+  .btn-primary, .btn-secondary {
+    padding: 8px 14px !important;
+    font-size: 13px !important;
   }
 }
 
 /* Clean Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: var(--bg-primary);

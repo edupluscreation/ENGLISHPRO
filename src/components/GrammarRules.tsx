@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { GOLDEN_GRAMMAR_RULES } from '../data/grammarRules';
+import React, { useState, useEffect, useMemo } from 'react';
+import { loadGrammarRules } from '../data/grammarRules';
 import type { GrammarRuleItem } from '../types/quiz';
 import { SmartQuestionCanvas } from './SmartQuestionCanvas';
 import { 
@@ -16,7 +16,7 @@ import {
   ArrowLeft, 
   Grid, 
   Languages, 
-  Lightbulb,
+  Lightbulb, 
   AlertTriangle,
   Award,
   BookMarked,
@@ -36,6 +36,17 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
   const [activeRuleIndex, setActiveRuleIndex] = useState(0);
   const [showRuleGridModal, setShowRuleGridModal] = useState(false);
 
+  // Lazy-loaded grammar rules data
+  const [grammarRules, setGrammarRules] = useState<GrammarRuleItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadGrammarRules().then(data => {
+      setGrammarRules(data);
+      setIsLoading(false);
+    });
+  }, []);
+
   // Dedicated Screen Practice state
   const [activePracticeRule, setActivePracticeRule] = useState<GrammarRuleItem | null>(null);
   const [currentPyqIndex, setCurrentPyqIndex] = useState(0);
@@ -54,18 +65,29 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
     'Conditionals & Modifiers'
   ];
 
-  const filteredRules = GOLDEN_GRAMMAR_RULES.filter(rule => {
-    const matchesCategory = selectedCategory === 'All' || rule.category.toLowerCase().includes(selectedCategory.toLowerCase()) || selectedCategory.toLowerCase().includes(rule.category.toLowerCase());
-    const matchesSearch = rule.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          rule.ruleDescription.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (rule.explanation && rule.explanation.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                          (rule.hindiExplanation && rule.hindiExplanation.includes(searchTerm)) ||
-                          `rule ${rule.id}`.includes(searchTerm.toLowerCase()) ||
-                          `${rule.id}` === searchTerm.trim();
-    return matchesCategory && matchesSearch;
-  });
+  const filteredRules = useMemo(() => {
+    if (grammarRules.length === 0) return [];
+    const sTerm = searchTerm.toLowerCase().trim();
+    const selCat = selectedCategory.toLowerCase();
 
-  const activeRule = filteredRules[activeRuleIndex] || filteredRules[0] || GOLDEN_GRAMMAR_RULES[0];
+    return grammarRules.filter(rule => {
+      const matchesCategory = selectedCategory === 'All' || 
+                              rule.category.toLowerCase().includes(selCat) || 
+                              selCat.includes(rule.category.toLowerCase());
+      
+      if (!matchesCategory) return false;
+      if (!sTerm) return true;
+
+      return rule.title.toLowerCase().includes(sTerm) || 
+             rule.ruleDescription.toLowerCase().includes(sTerm) ||
+             (rule.explanation && rule.explanation.toLowerCase().includes(sTerm)) ||
+             (rule.hindiExplanation && rule.hindiExplanation.includes(searchTerm)) ||
+             `rule ${rule.id}`.includes(sTerm) ||
+             `${rule.id}` === sTerm;
+    });
+  }, [selectedCategory, searchTerm, grammarRules]);
+
+  const activeRule = filteredRules[activeRuleIndex] || filteredRules[0] || grammarRules[0];
 
   // Touch swipe support for mobile & tablets
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -142,7 +164,7 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
     } else {
       setSelectedCategory('All');
       setSearchTerm('');
-      const globalIdx = GOLDEN_GRAMMAR_RULES.findIndex(r => r.id === ruleId);
+      const globalIdx = grammarRules.findIndex(r => r.id === ruleId);
       if (globalIdx !== -1) {
         setActiveRuleIndex(globalIdx);
       }
@@ -202,29 +224,29 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
       const mainTitle = match[1].trim();
       const subTitle = match[2].trim();
       return (
-        <div style={{ marginBottom: isListView ? '10px' : '16px' }}>
+        <div style={{ marginBottom: isListView ? '6px' : '10px' }}>
           <h2 style={{
-            fontSize: isListView ? '1.08rem' : '1.24rem',
+            fontSize: isListView ? '13px' : '15px',
             fontWeight: 800,
             color: 'var(--text-main)',
             lineHeight: 1.35,
-            letterSpacing: '-0.015em',
+            letterSpacing: '-0.01em',
             margin: 0,
             wordBreak: 'break-word'
           }}>
             {renderFormattedText(mainTitle)}
           </h2>
           <div style={{
-            fontSize: isListView ? '0.78rem' : '0.84rem',
+            fontSize: '11px',
             fontWeight: 600,
-            color: 'var(--text-muted)',
-            marginTop: '4px',
+            color: 'var(--text-dim)',
+            marginTop: '3px',
             lineHeight: 1.4,
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '5px'
           }}>
-            <span style={{ color: 'var(--primary)', opacity: 0.85, fontSize: '0.9em' }}>⚡</span>
+            <span style={{ color: 'var(--primary)', fontSize: '11px' }}>⚡</span>
             <span>{renderFormattedText(subTitle)}</span>
           </div>
         </div>
@@ -233,12 +255,12 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
 
     return (
       <h2 style={{
-        fontSize: isListView ? '1.08rem' : '1.24rem',
+        fontSize: isListView ? '13px' : '15px',
         fontWeight: 800,
         color: 'var(--text-main)',
-        marginBottom: isListView ? '10px' : '16px',
+        marginBottom: isListView ? '6px' : '10px',
         lineHeight: 1.35,
-        letterSpacing: '-0.015em',
+        letterSpacing: '-0.01em',
         wordBreak: 'break-word'
       }}>
         {renderFormattedText(title)}
@@ -253,7 +275,7 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
     const rawBlocks = text.split(/\n+/).map(b => b.trim()).filter(b => b.length > 0);
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {rawBlocks.map((block, idx) => {
           // Ignore accidental stray punctuation lines like ").", ")", "."
           const cleanedText = block.replace(/^[❌✖✔✅•\-\*📌📋💡⚠️⛔♦\s]+/, '').trim();
@@ -267,18 +289,18 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
               <div key={idx} style={{
                 display: 'flex',
                 alignItems: 'flex-start',
-                gap: '12px',
+                gap: '8px',
                 color: 'var(--error)',
                 background: 'var(--error-bg)',
                 border: '1px solid var(--error-border)',
-                borderLeft: '4px solid var(--error)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '12px 16px',
-                fontSize: '0.94rem',
+                borderLeft: '3px solid var(--error)',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                fontSize: '12px',
                 fontWeight: 600,
-                lineHeight: 1.6
+                lineHeight: 1.5
               }}>
-                <XCircle size={17} style={{ flexShrink: 0, marginTop: '3px', color: 'var(--error)' }} />
+                <XCircle size={14} style={{ flexShrink: 0, marginTop: '2px', color: 'var(--error)' }} />
                 <div style={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
                   <span style={{ textDecoration: 'line-through', opacity: 0.9 }}>{renderFormattedText(cleanedText)}</span>
                 </div>
@@ -292,18 +314,18 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
               <div key={idx} style={{
                 display: 'flex',
                 alignItems: 'flex-start',
-                gap: '12px',
-                color: 'var(--success)',
+                gap: '8px',
+                color: '#10b981',
                 background: 'var(--success-bg)',
                 border: '1px solid var(--success-border)',
-                borderLeft: '4px solid var(--success)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '12px 16px',
-                fontSize: '0.94rem',
+                borderLeft: '3px solid #10b981',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                fontSize: '12px',
                 fontWeight: 600,
-                lineHeight: 1.6
+                lineHeight: 1.5
               }}>
-                <CheckCircle2 size={17} style={{ flexShrink: 0, marginTop: '3px', color: 'var(--success)' }} />
+                <CheckCircle2 size={14} style={{ flexShrink: 0, marginTop: '2px', color: '#10b981' }} />
                 <div style={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
                   <span>{renderFormattedText(cleanedText)}</span>
                 </div>
@@ -314,8 +336,8 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
           // 3. Bullet Items (starts with •, -, *, 1., 2.)
           if (/^[•\-\*]|\d+\.\s*/.test(block)) {
             return (
-              <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.94rem', color: 'var(--text-main)', lineHeight: 1.65 }}>
-                <span style={{ color: 'var(--primary)', fontWeight: 800, flexShrink: 0, marginTop: '2px', fontSize: '1.1rem' }}>•</span>
+              <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12px', color: 'var(--text-main)', lineHeight: 1.5 }}>
+                <span style={{ color: 'var(--primary)', fontWeight: 800, flexShrink: 0, marginTop: '1px' }}>•</span>
                 <div style={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
                   {renderFormattedText(cleanedText)}
                 </div>
@@ -327,12 +349,12 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
           if (/^Examples?:/i.test(block)) {
             const content = block.replace(/^Examples?:/i, '').trim();
             return (
-              <div key={idx} style={{ marginTop: '6px' }}>
-                <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Sparkles size={14} /> Examples & Details:
+              <div key={idx} style={{ marginTop: '4px' }}>
+                <div style={{ fontSize: '10.5px', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Sparkles size={12} /> Examples & Details:
                 </div>
                 {content && (
-                  <div style={{ fontSize: '0.94rem', color: 'var(--text-main)', lineHeight: 1.65, paddingLeft: '4px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-main)', lineHeight: 1.5, paddingLeft: '2px' }}>
                     {renderFormattedText(content)}
                   </div>
                 )}
@@ -342,7 +364,7 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
 
           // 5. Standard Clean Paragraph
           return (
-            <p key={idx} style={{ fontSize: '0.94rem', color: 'var(--text-main)', lineHeight: 1.7, margin: 0, wordBreak: 'break-word' }}>
+            <p key={idx} style={{ fontSize: '12px', color: 'var(--text-main)', lineHeight: 1.55, margin: 0, wordBreak: 'break-word' }}>
               {renderFormattedText(block.replace(/^[📌📋💡⚠️⛔♦\s]+/, ''))}
             </p>
           );
@@ -357,13 +379,14 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
 
     return (
       <div style={{
-        background: 'var(--bg-surface-elevated)',
+        background: 'var(--bg-surface)',
         border: '1px solid var(--border-color)',
-        borderRadius: 'var(--radius-md)',
-        padding: '18px 20px',
+        borderRadius: '12px',
+        padding: '12px 14px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px'
+        gap: '10px',
+        fontFamily: "var(--font-sans), 'Noto Sans Devanagari', 'Segoe UI', system-ui, sans-serif"
       }}>
         {rawLines.map((line, idx) => {
           // Strip stray symbols and emoji prefixes cleanly
@@ -371,64 +394,145 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
 
           // 1. Exam Tip / Caution / Warning Line
           if (line.includes('परीक्षा टिप') || line.includes('अपवाद') || line.toLowerCase().includes('caution')) {
+            const cleanTipContent = cleanLine.replace(/^(?:परीक्षा\s*टिप|अपवाद|महत्वपूर्ण|caution|note)\s*[:\-\/]*\s*/i, '')
+                                             .replace(/^(?:परीक्षा\s*टिप|अपवाद|महत्वपूर्ण|caution|note)\s*[:\-\/]*\s*/i, '')
+                                             .replace(/^[:\-\/\s]+/, '')
+                                             .trim();
+            // Split by semicolon or newlines to separate multiple examples/facts on distinct lines
+            const tipParts = cleanTipContent.split(/;\s*|\n+/).filter(Boolean);
+
             return (
               <div
                 key={idx}
                 style={{
                   background: 'var(--error-bg)',
                   border: '1px solid var(--error-border)',
-                  borderLeft: '4px solid var(--error)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '10px 14px',
-                  fontSize: '0.92rem',
-                  color: 'var(--text-main)',
-                  lineHeight: 1.6,
+                  borderLeft: '3px solid var(--error)',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
                   marginTop: '4px'
                 }}
               >
-                <strong style={{ color: 'var(--error)', marginRight: '6px' }}>परीक्षा टिप / अपवाद:</strong>
-                <span>{renderFormattedText(cleanLine.replace(/^(परीक्षा टिप|अपवाद|महत्वपूर्ण):\s*/, ''))}</span>
+                <div style={{
+                  fontSize: '10.5px',
+                  fontWeight: 800,
+                  color: 'var(--error)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  marginBottom: '6px'
+                }}>
+                  <span>⚠️</span>
+                  <span>परीक्षा टिप / अपवाद (Exam Tip)</span>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {tipParts.map((tPart, pIdx) => {
+                    const isWrong = tPart.includes('❌') || tPart.includes('गलत');
+                    const isRight = tPart.includes('✔') || tPart.includes('सही');
+
+                    return (
+                      <div
+                        key={pIdx}
+                        style={{
+                          fontSize: '12px',
+                          color: isWrong ? 'var(--error)' : isRight ? '#10b981' : 'var(--text-main)',
+                          lineHeight: 1.5,
+                          background: isWrong ? 'rgba(239, 68, 68, 0.07)' : isRight ? 'rgba(16, 185, 129, 0.07)' : 'transparent',
+                          padding: (isWrong || isRight) ? '4px 8px' : '0',
+                          borderRadius: '5px',
+                          fontWeight: (isWrong || isRight) ? 600 : 500
+                        }}
+                      >
+                        {renderFormattedText(tPart.replace(/^[:\s]+/, '').trim())}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           }
 
           // 2. Formula Line
-          if (line.includes('फॉर्मूला') || line.toLowerCase().includes('formula:')) {
+          if (line.includes('फॉर्मूला') || line.includes('फ़ॉर्मूला') || line.toLowerCase().includes('formula:')) {
+            const cleanFormulaContent = cleanLine.replace(/^(?:फ़ॉर्मूला|फॉर्मूला|formula)\s*[:\-\/]*\s*/i, '')
+                                                 .replace(/^(?:फ़ॉर्मूला|फॉर्मूला|formula)\s*[:\-\/]*\s*/i, '')
+                                                 .replace(/^[:\-\/\s]+/, '')
+                                                 .trim();
+            // Split formulas separated by pipe '|' or newlines
+            const formulaParts = cleanFormulaContent.split(/\s*\|\s*|\n+/).filter(Boolean);
+
             return (
               <div
                 key={idx}
                 style={{
                   background: 'var(--primary-light)',
                   border: '1px solid var(--primary-border)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '10px 14px',
-                  fontSize: '0.92rem',
-                  color: 'var(--text-main)',
-                  lineHeight: 1.6,
+                  borderLeft: '3px solid var(--primary)',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
                   marginTop: '4px'
                 }}
               >
-                <strong style={{ color: 'var(--primary)', marginRight: '6px' }}>फॉर्मूला:</strong>
-                <span>{renderFormattedText(cleanLine.replace(/^फॉर्मूला:\s*/, ''))}</span>
+                <div style={{
+                  fontSize: '10.5px',
+                  fontWeight: 800,
+                  color: 'var(--primary)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  marginBottom: '6px'
+                }}>
+                  <span>📐</span>
+                  <span>फ़ॉर्मूला (Rule Formula)</span>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {formulaParts.map((fPart, fIdx) => (
+                    <div
+                      key={fIdx}
+                      style={{
+                        fontSize: '12px',
+                        color: 'var(--primary)',
+                        fontWeight: 700,
+                        lineHeight: 1.4,
+                        padding: '6px 10px',
+                        background: 'var(--bg-surface)',
+                        borderRadius: '6px',
+                        border: '1px solid var(--primary-border)',
+                        wordBreak: 'break-word'
+                      }}
+                    >
+                      {renderFormattedText(fPart.trim())}
+                    </div>
+                  ))}
+                </div>
               </div>
             );
           }
 
-          // 3. Subheading (e.g. "महत्वपूर्ण अंतर:", "पूरी सूची:", "सही व गलत रूप:")
-          if (cleanLine.endsWith(':') || cleanLine.startsWith('महत्वपूर्ण अंतर') || cleanLine.startsWith('पूरी सूची')) {
+          // 3. Subheading (e.g. "महत्वपूर्ण अंतर:", "मुख्य नियम:", "पूरी सूची:", "सही व गलत रूप:")
+          if (cleanLine.endsWith(':') || cleanLine.startsWith('महत्वपूर्ण अंतर') || cleanLine.startsWith('मुख्य नियम') || cleanLine.startsWith('पूरी सूची')) {
             return (
               <div
                 key={idx}
                 style={{
-                  fontSize: '0.92rem',
+                  fontSize: '12.5px',
                   fontWeight: 800,
                   color: 'var(--primary)',
                   marginTop: idx > 0 ? '6px' : '0',
-                  marginBottom: '-4px',
-                  letterSpacing: '0.2px'
+                  marginBottom: '2px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
                 }}
               >
-                {renderFormattedText(cleanLine)}
+                <span style={{ fontSize: '11px' }}>🔹</span>
+                <span>{renderFormattedText(cleanLine)}</span>
               </div>
             );
           }
@@ -441,14 +545,14 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
                 style={{
                   display: 'flex',
                   alignItems: 'flex-start',
-                  gap: '10px',
-                  fontSize: '0.94rem',
+                  gap: '8px',
+                  fontSize: '12px',
                   color: 'var(--text-main)',
-                  lineHeight: 1.65,
-                  paddingLeft: '4px'
+                  lineHeight: 1.6,
+                  paddingLeft: '2px'
                 }}
               >
-                <span style={{ color: 'var(--primary)', fontWeight: 800, flexShrink: 0, marginTop: '1px' }}>•</span>
+                <span style={{ color: 'var(--primary)', fontWeight: 800, flexShrink: 0, marginTop: '2px' }}>•</span>
                 <div style={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
                   {renderFormattedText(cleanLine)}
                 </div>
@@ -461,9 +565,9 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
             <p
               key={idx}
               style={{
-                fontSize: '0.94rem',
+                fontSize: '12px',
                 color: 'var(--text-main)',
-                lineHeight: 1.65,
+                lineHeight: 1.6,
                 margin: 0,
                 wordBreak: 'break-word'
               }}
@@ -530,10 +634,10 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
       <div style={{
         background: 'var(--bg-surface-elevated)',
         border: '1.5px solid var(--border-color)',
-        borderLeft: '5px solid var(--primary)',
-        borderRadius: 'var(--radius-md)',
-        padding: '16px 18px',
-        marginBottom: '22px',
+        borderLeft: '4px solid var(--primary)',
+        borderRadius: '10px',
+        padding: '10px 12px',
+        marginBottom: '14px',
         boxShadow: 'var(--shadow-xs)'
       }}>
         {/* Header */}
@@ -541,69 +645,68 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '12px',
+          marginBottom: '8px',
           flexWrap: 'wrap',
-          gap: '8px'
+          gap: '6px'
         }}>
           <span style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '6px',
-            fontSize: '0.74rem',
+            gap: '4px',
+            fontSize: '9.5px',
             fontWeight: 800,
             color: 'var(--primary)',
-            letterSpacing: '0.6px',
+            letterSpacing: '0.04em',
             textTransform: 'uppercase',
             background: 'var(--primary-light)',
-            padding: '3px 10px',
+            padding: '2px 7px',
             borderRadius: '4px'
           }}>
-            <Zap size={13} />
+            <Zap size={11} />
             <span>Core Syntax Formula</span>
           </span>
           {formulas.length > 1 && (
-            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+            <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 600 }}>
               {formulas.length} Core Structures
             </span>
           )}
         </div>
 
         {/* Formula Rows */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {formulas.map((fItem, fIdx) => (
             <div
               key={fIdx}
               style={{
                 background: 'var(--bg-surface)',
                 border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '14px 18px',
-                fontSize: '1rem',
+                borderRadius: '7px',
+                padding: '8px 12px',
+                fontSize: '12px',
                 fontWeight: 700,
                 color: 'var(--text-main)',
-                lineHeight: 1.6,
-                letterSpacing: '-0.01em',
+                lineHeight: 1.45,
                 wordBreak: 'break-word',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px'
+                gap: '8px'
               }}
             >
               {formulas.length > 1 && (
                 <span style={{
-                  fontSize: '0.74rem',
+                  fontSize: '9.5px',
                   color: 'var(--primary)',
                   fontWeight: 800,
                   background: 'var(--primary-light)',
-                  padding: '3px 8px',
-                  borderRadius: '4px',
+                  padding: '1px 5px',
+                  borderRadius: '3px',
                   border: '1px solid var(--primary-border)',
                   flexShrink: 0
                 }}>
                   #{fIdx + 1}
                 </span>
               )}
-              <div style={{ flex: 1, fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)' }}>
+              <div style={{ flex: 1, fontSize: '12px', fontWeight: 700, color: 'var(--text-main)' }}>
                 {renderFormattedText(fItem)}
               </div>
             </div>
@@ -645,11 +748,11 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
   };
 
   return (
-    <div style={{ width: '100%', maxWidth: '1100px', margin: '0 auto', padding: '16px 16px 40px 16px' }}>
+    <div style={{ width: '100%', maxWidth: '680px', margin: '0 auto', padding: '14px 12px 40px 12px', boxSizing: 'border-box', overflowX: 'hidden' }}>
       
       {/* ─── SCENARIO A: DEDICATED PRACTICE QUIZ SCREEN ─── */}
       {activePracticeRule && activePracticeRule.pyqs && activePracticeRule.pyqs.length > 0 ? (
-        <div style={{ maxWidth: '840px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '680px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
           
           {/* Quiz Top Navigation Bar */}
           <div style={{ 
@@ -908,47 +1011,76 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
           <div style={{
             background: 'var(--bg-surface)',
             border: '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '22px 24px',
-            marginBottom: '16px',
+            borderRadius: '14px',
+            padding: '14px 16px',
+            marginBottom: '12px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: '16px',
-            boxShadow: 'var(--shadow-xs)'
+            gap: '10px',
+            boxShadow: 'var(--shadow-xs)',
+            width: '100%',
+            boxSizing: 'border-box'
           }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <span className="badge badge-primary">
-                  <Zap size={13} />
+            <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <span style={{
+                  fontSize: '9.5px',
+                  fontWeight: 800,
+                  color: 'var(--primary)',
+                  background: 'var(--primary-light)',
+                  padding: '1px 6px',
+                  borderRadius: '4px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px'
+                }}>
+                  <Zap size={11} />
                   <span>Grammar Rules</span>
                 </span>
-                <span className="badge badge-warning">
-                  <Sparkles size={13} />
+                <span style={{
+                  fontSize: '9.5px',
+                  fontWeight: 800,
+                  color: '#f59e0b',
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  padding: '1px 6px',
+                  borderRadius: '4px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px'
+                }}>
+                  <Sparkles size={11} />
                   <span>120 Golden Rules</span>
                 </span>
               </div>
-              <h1 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '4px', letterSpacing: '-0.02em' }}>
+              <h1 style={{ fontSize: '17px', fontWeight: 800, margin: '0 0 2px 0', letterSpacing: '-0.01em', color: 'var(--text-main)' }}>
                 120 Golden Rules <span className="gradient-text">of English Grammar</span>
               </h1>
-              <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', maxWidth: '620px' }}>
-                Master complete theory, core formulas, common exam traps, and practice 1,200+ authentic SSC CGL / CHSL / CPO PYQ questions.
+              <p style={{ fontSize: '11.5px', color: 'var(--text-dim)', margin: 0, lineHeight: 1.4 }}>
+                Master complete theory, core formulas, common exam traps & practice authentic SSC PYQs.
               </p>
             </div>
 
             {/* Quick Rule Grid Opener Button */}
             <button
               onClick={() => setShowRuleGridModal(true)}
-              className="btn-secondary"
               style={{
-                padding: '9px 14px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-main)',
                 fontWeight: 700,
-                fontSize: '0.86rem',
-                gap: '6px'
+                fontSize: '11.5px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                cursor: 'pointer',
+                flexShrink: 0
               }}
             >
-              <Grid size={16} color="var(--primary)" />
+              <Grid size={14} color="var(--primary)" />
               <span>Jump to Rule (1–120)</span>
             </button>
           </div>
@@ -1056,7 +1188,7 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
                   gridTemplateColumns: 'repeat(auto-fill, minmax(46px, 1fr))',
                   gap: '6px'
                 }}>
-                  {GOLDEN_GRAMMAR_RULES.map(rule => {
+                  {grammarRules.map(rule => {
                     const isCurrent = activeRule && activeRule.id === rule.id;
                     return (
                       <button
@@ -1097,41 +1229,41 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
                 style={{
                   background: 'var(--bg-surface)',
                   border: '1px solid var(--border-color)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '24px 22px',
-                  boxShadow: 'var(--shadow-sm)',
+                  borderRadius: '14px',
+                  padding: '14px 16px',
+                  boxShadow: 'var(--shadow-xs)',
                   position: 'relative',
                   touchAction: 'pan-y'
                 }}
               >
                 {/* Top Rule Bar */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                     <span style={{ 
                       background: 'var(--primary)', 
                       color: '#ffffff', 
-                      fontSize: '0.8rem', 
+                      fontSize: '9.5px', 
                       fontWeight: 800, 
-                      padding: '4px 10px', 
-                      borderRadius: '6px',
-                      letterSpacing: '0.5px'
+                      padding: '2px 7px', 
+                      borderRadius: '5px',
+                      letterSpacing: '0.04em'
                     }}>
                       RULE {activeRule.id < 10 ? `0${activeRule.id}` : activeRule.id}
                     </span>
                     <span style={{ 
-                      fontSize: '0.78rem', 
+                      fontSize: '9.5px', 
                       fontWeight: 700, 
-                      color: 'var(--text-muted)', 
+                      color: 'var(--text-dim)', 
                       background: 'var(--bg-surface-elevated)', 
-                      padding: '4px 10px', 
-                      borderRadius: '6px', 
+                      padding: '2px 7px', 
+                      borderRadius: '5px', 
                       border: '1px solid var(--border-color)' 
                     }}>
                       {activeRule.category}
                     </span>
                   </div>
 
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dim)' }}>
+                  <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-dim)' }}>
                     Rule {activeRuleIndex + 1} of {filteredRules.length}
                   </div>
                 </div>
@@ -1143,18 +1275,18 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
                 {activeRule.formula && renderSmartFormulaBox(activeRule.formula)}
 
                 {/* Core Concept & Explanation */}
-                <div style={{ marginBottom: '24px', lineHeight: 1.65 }}>
+                <div style={{ marginBottom: '14px', lineHeight: 1.55 }}>
                   {ruleLanguage === 'hindi' && activeRule.hindiExplanation ? (
                     <div>
-                      <div style={{ fontSize: '0.76rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Languages size={14} /> हिंदी व्याख्या (Exam Notes):
+                      <div style={{ fontSize: '10.5px', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Languages size={12} /> हिंदी व्याख्या (Exam Notes):
                       </div>
                       {renderFormattedHindiExplanation(activeRule.hindiExplanation)}
                     </div>
                   ) : (
                     <div>
-                      <div style={{ fontSize: '0.76rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <BookOpen size={14} /> Concept & Grammar Rule Breakdown:
+                      <div style={{ fontSize: '10.5px', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <BookOpen size={12} /> Concept & Grammar Rule Breakdown:
                       </div>
                       {renderSmartRuleDescription(activeRule.ruleDescription)}
                     </div>
@@ -1165,22 +1297,22 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
                 {activeRule.incorrectExample && activeRule.correctExample && (
                   <div style={{ 
                     display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', 
-                    gap: '14px', 
-                    marginBottom: '24px' 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+                    gap: '8px', 
+                    marginBottom: '14px' 
                   }}>
                     {/* Common Mistake Card */}
                     <div style={{ 
                       background: 'var(--error-bg)', 
                       border: '1px solid var(--error-border)', 
-                      borderLeft: '4px solid var(--error)',
-                      borderRadius: 'var(--radius-sm)', 
-                      padding: '16px 18px' 
+                      borderLeft: '3px solid var(--error)',
+                      borderRadius: '8px', 
+                      padding: '10px 12px' 
                     }}>
-                      <div style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--error)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <XCircle size={15} /> Common Mistake (Incorrect)
+                      <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--error)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <XCircle size={12} /> Common Mistake (Incorrect)
                       </div>
-                      <div style={{ fontSize: '0.94rem', color: 'var(--text-main)', fontStyle: 'italic', lineHeight: 1.6 }}>
+                      <div style={{ fontSize: '12px', color: 'var(--text-main)', fontStyle: 'italic', lineHeight: 1.45 }}>
                         "{activeRule.incorrectExample?.replace(/^[*\-+\s"']+|[*\-+\s"']+$/g, '').trim()}"
                       </div>
                     </div>
@@ -1189,14 +1321,14 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
                     <div style={{ 
                       background: 'var(--success-bg)', 
                       border: '1px solid var(--success-border)', 
-                      borderLeft: '4px solid var(--success)',
-                      borderRadius: 'var(--radius-sm)', 
-                      padding: '16px 18px' 
+                      borderLeft: '3px solid #10b981',
+                      borderRadius: '8px', 
+                      padding: '10px 12px' 
                     }}>
-                      <div style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--success)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <CheckCircle2 size={15} /> SSC Standard (Correct)
+                      <div style={{ fontSize: '10px', fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <CheckCircle2 size={12} /> SSC Standard (Correct)
                       </div>
-                      <div style={{ fontSize: '0.94rem', color: 'var(--text-main)', fontWeight: 700, lineHeight: 1.6 }}>
+                      <div style={{ fontSize: '12px', color: 'var(--text-main)', fontWeight: 700, lineHeight: 1.45 }}>
                         "{activeRule.correctExample?.replace(/^[*\-+\s"']+|[*\-+\s"']+$/g, '').trim()}"
                       </div>
                     </div>
@@ -1205,23 +1337,23 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
 
                 {/* Additional Real-Exam Variations & Edge Cases */}
                 {activeRule.moreExamples && activeRule.moreExamples.length > 0 && (
-                  <div style={{ marginBottom: '24px' }}>
-                    <div style={{ fontSize: '0.76rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Sparkles size={14} /> Additional Real-Exam Variations:
+                  <div style={{ marginBottom: '14px' }}>
+                    <div style={{ fontSize: '10.5px', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Sparkles size={12} /> Additional Real-Exam Variations:
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {activeRule.moreExamples.map((ex, exIdx) => (
-                        <div key={exIdx} style={{ background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '14px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', color: 'var(--error)', fontSize: '0.92rem', textDecoration: 'line-through', opacity: 0.88, marginBottom: '6px', lineHeight: 1.55 }}>
-                            <XCircle size={15} style={{ flexShrink: 0, marginTop: '3px' }} />
+                        <div key={exIdx} style={{ background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '8px 10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', color: 'var(--error)', fontSize: '11.5px', textDecoration: 'line-through', opacity: 0.88, marginBottom: '3px', lineHeight: 1.4 }}>
+                            <XCircle size={12} style={{ flexShrink: 0, marginTop: '2px' }} />
                             <span>{ex.incorrect}</span>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', color: 'var(--success)', fontSize: '0.94rem', fontWeight: 700, marginBottom: ex.note ? '8px' : '0', lineHeight: 1.55 }}>
-                            <CheckCircle2 size={15} style={{ flexShrink: 0, marginTop: '3px' }} />
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', color: '#10b981', fontSize: '12px', fontWeight: 700, marginBottom: ex.note ? '4px' : '0', lineHeight: 1.4 }}>
+                            <CheckCircle2 size={12} style={{ flexShrink: 0, marginTop: '2px' }} />
                             <span>{ex.correct}</span>
                           </div>
                           {ex.note && (
-                            <div style={{ fontSize: '0.84rem', color: 'var(--text-main)', background: 'var(--bg-surface)', padding: '8px 12px', borderRadius: '4px', border: '1px solid var(--border-color)', marginTop: '6px', lineHeight: 1.5 }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-dim)', background: 'var(--bg-surface)', padding: '5px 8px', borderRadius: '5px', border: '1px solid var(--border-color)', marginTop: '4px', lineHeight: 1.4 }}>
                               💡 <strong>Exam Note:</strong> {ex.note}
                             </div>
                           )}
@@ -1235,8 +1367,8 @@ export const GrammarRules: React.FC<GrammarRulesProps> = () => {
                 <div style={{ 
                   background: 'var(--bg-surface-elevated)',
                   border: '1px solid var(--border-color)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '16px 18px',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',

@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { VOCAB_ITEMS } from '../data/vocabData';
+import React, { useState, useMemo, useEffect } from 'react';
+import { loadVocabData } from '../data/vocabData';
+import type { VocabItem } from '../types/quiz';
 import { Search, Tag, Sparkles, Volume2, ChevronDown, X, Loader2, Brain, Zap, BookOpen } from 'lucide-react';
 import { FlatIconVocabBank } from './FlatIcons';
 
@@ -20,23 +21,39 @@ interface ThesaurusResult {
   extraAntonyms: string[];
 }
 
-const getAIMnemonic = (word: string, matchedItem?: any) => {
+const getAIMnemonic = (word: string, matchedItem?: any, primaryMeaning?: string, liveHindi?: string) => {
   const w = word.toLowerCase().trim();
-  if (matchedItem?.hindiMeaning) {
-    return `हिंदी अर्थ: ${matchedItem.hindiMeaning} | SSC Example: "${matchedItem.exampleSentence || matchedItem.meaning}"`;
+  const hindi = matchedItem?.hindiMeaning || liveHindi;
+
+  if (hindi) {
+    const usage = matchedItem?.exampleSentence || primaryMeaning;
+    return usage 
+      ? `हिन्दी अर्थ: ${hindi} • Exam Context: "${usage}"`
+      : `हिन्दी अर्थ: ${hindi} • Essential vocabulary for SSC CGL, CHSL, CPO & MTS examinations.`;
   }
-  if (w === 'ephemeral') return "AI Memory Trick: 'E-film-for-all' (Movies end in 2 hours) → Lasting for a very short time (क्षणिक).";
-  if (w === 'benevolent') return "AI Memory Trick: 'Bene' (Good/Kind) + 'Vol' (Wish) → Well-meaning and kindly (दयालु).";
-  if (w === 'pragmatic') return "AI Memory Trick: 'Practical Management' → Dealing with things sensibly & realistically (व्यावहारिक).";
-  if (w === 'eloquent') return "AI Memory Trick: 'Elocution' → Fluent and persuasive in speech (वाक्पटु).";
-  if (w === 'ubiquitous') return "AI Memory Trick: 'Ubi' (Everywhere) → Present & found everywhere (सर्वव्यापी).";
-  return `AI Memory Trick: Break down "${word}" into roots for instant recall in SSC CGL / CHSL exams.`;
+
+  if (primaryMeaning) {
+    return `Exam Memory Key: "${word.toUpperCase()}" ➔ ${primaryMeaning}`;
+  }
+
+  return `Exam Memory Key: "${word.toUpperCase()}" ➔ Focus on contextual usage in SSC CGL / CHSL reading comprehension and cloze tests.`;
 };
 
 export const VocabBank: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [displayLimit, setDisplayLimit] = useState<number>(30);
   
+  // Lazy-loaded vocab items
+  const [vocabItems, setVocabItems] = useState<VocabItem[]>([]);
+  const [isVocabLoading, setIsVocabLoading] = useState(true);
+
+  useEffect(() => {
+    loadVocabData().then(data => {
+      setVocabItems(data);
+      setIsVocabLoading(false);
+    });
+  }, []);
+
   // Live Thesaurus Modal State
   const [isThesaurusOpen, setIsThesaurusOpen] = useState<boolean>(false);
   const [thesaurusQuery, setThesaurusQuery] = useState<string>('');
@@ -46,15 +63,15 @@ export const VocabBank: React.FC = () => {
 
   const filteredItems = useMemo(() => {
     const query = searchTerm.toLowerCase().trim();
-    if (!query) return VOCAB_ITEMS;
+    if (!query) return vocabItems;
 
-    return VOCAB_ITEMS.filter(item => {
+    return vocabItems.filter(item => {
       return item.word.toLowerCase().includes(query) || 
              item.meaning.toLowerCase().includes(query) ||
              (item.hindiMeaning && item.hindiMeaning.includes(query)) ||
              (item.examTag && item.examTag.toLowerCase().includes(query));
     });
-  }, [searchTerm]);
+  }, [searchTerm, vocabItems]);
 
   const visibleItems = useMemo(() => {
     return filteredItems.slice(0, displayLimit);
@@ -75,149 +92,234 @@ export const VocabBank: React.FC = () => {
   };
 
   const fetchThesaurusWord = async (wordToSearch: string) => {
-    const word = wordToSearch.trim().toLowerCase();
-    if (!word) return;
+    let word = wordToSearch.trim().toLowerCase();
+    if (!word) {
+      const fallbackList = ['ephemeral', 'benevolent', 'pragmatic', 'ubiquitous', 'candid', 'meticulous', 'tenacious', 'resilient', 'paucity', 'voracious'];
+      word = fallbackList[Math.floor(Math.random() * fallbackList.length)];
+    }
 
     setThesaurusQuery(word);
-    setThesaurusLoading(true);
     setThesaurusError(null);
     setIsThesaurusOpen(true);
 
-    const matchedLocal = VOCAB_ITEMS.find(item => item.word.toLowerCase() === word);
+    const matchedLocal = vocabItems.find(item => item.word.toLowerCase() === word) ||
+      vocabItems.find(item => item.word.toLowerCase().startsWith(word));
 
-    try {
-      const [synRes, antRes, dictRes] = await Promise.allSettled([
-        fetch(`https://api.datamuse.com/words?rel_syn=${word}&max=15`).then(r => r.json()),
-        fetch(`https://api.datamuse.com/words?rel_ant=${word}&max=15`).then(r => r.json()),
-        fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`).then(r => r.json())
-      ]);
-
-      const extraSyn: string[] = synRes.status === 'fulfilled' && Array.isArray(synRes.value)
-        ? synRes.value.map((i: any) => i.word) : [];
-      const extraAnt: string[] = antRes.status === 'fulfilled' && Array.isArray(antRes.value)
-        ? antRes.value.map((i: any) => i.word) : [];
-
-      let phonetic = '';
-      let audioUrl = '';
-      let origin = '';
-      let meanings: DictMeaning[] = [];
-
-      if (dictRes.status === 'fulfilled' && Array.isArray(dictRes.value) && dictRes.value.length > 0) {
-        const entry = dictRes.value[0];
-        phonetic = entry.phonetic || entry.phonetics?.[0]?.text || '';
-        audioUrl = entry.phonetics?.find((p: any) => p.audio)?.audio || '';
-        if (audioUrl && !audioUrl.startsWith('http')) audioUrl = 'https:' + audioUrl;
-        origin = entry.origin || '';
-
-        meanings = (entry.meanings || []).map((m: any) => ({
-          partOfSpeech: m.partOfSpeech || '',
-          definitions: (m.definitions || []).slice(0, 3).map((d: any) => ({
-            definition: d.definition || '',
-            example: d.example || undefined
-          })),
-          synonyms: m.synonyms || [],
-          antonyms: m.antonyms || []
-        }));
-      }
-
-      if (matchedLocal && meanings.length === 0) {
-        meanings = [{
-          partOfSpeech: matchedLocal.type || 'Word',
+    // 1. INSTANT 0ms RENDER FROM LOCAL DATABASE IF PRESENT
+    if (matchedLocal) {
+      setThesaurusData({
+        word: matchedLocal.word,
+        phonetic: '',
+        audioUrl: '',
+        origin: '',
+        meanings: [{
+          partOfSpeech: matchedLocal.type || 'Adjective / Noun',
           definitions: [{
             definition: matchedLocal.meaning,
             example: matchedLocal.exampleSentence
           }],
           synonyms: matchedLocal.synonyms || [],
           antonyms: matchedLocal.antonyms || []
-        }];
+        }],
+        extraSynonyms: matchedLocal.synonyms || [],
+        extraAntonyms: matchedLocal.antonyms || []
+      });
+      setThesaurusLoading(false);
+    } else {
+      setThesaurusLoading(true);
+    }
+
+    // 2. FETCH COMPREHENSIVE DICTIONARY API, DATAMUSE & HINDI TRANSLATION (8s timeout)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const [dictRes, dmRes, synRes, antRes, mmRes] = await Promise.allSettled([
+        fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, { signal: controller.signal }).then(r => r.json()),
+        fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=dp&max=1`, { signal: controller.signal }).then(r => r.json()),
+        fetch(`https://api.datamuse.com/words?rel_syn=${encodeURIComponent(word)}&max=15`, { signal: controller.signal }).then(r => r.json()),
+        fetch(`https://api.datamuse.com/words?rel_ant=${encodeURIComponent(word)}&max=15`, { signal: controller.signal }).then(r => r.json()),
+        fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|hi`, { signal: controller.signal }).then(r => r.json())
+      ]);
+
+      clearTimeout(timeoutId);
+
+      // Extract Hindi Meaning (Check Offline Dict First, then MyMemory)
+      let liveHindiMeaning = matchedLocal?.hindiMeaning || '';
+      if (!liveHindiMeaning) {
+        try {
+          const { lookupHindiMeaningOffline } = await import('../data/vocabData');
+          const offlineMatch = await lookupHindiMeaningOffline(word);
+          if (offlineMatch) liveHindiMeaning = offlineMatch;
+        } catch {}
       }
 
-      if (meanings.length === 0 && extraSyn.length === 0 && extraAnt.length === 0) {
-        setThesaurusError(`No results found for "${word}".`);
-      } else {
-        setThesaurusData({
-          word, phonetic, audioUrl, origin, meanings,
-          extraSynonyms: Array.from(new Set([...(matchedLocal?.synonyms || []), ...extraSyn])).slice(0, 15),
-          extraAntonyms: Array.from(new Set([...(matchedLocal?.antonyms || []), ...extraAnt])).slice(0, 15)
-        });
+      if (!liveHindiMeaning && mmRes.status === 'fulfilled' && mmRes.value?.responseData?.translatedText) {
+        const tr = mmRes.value.responseData.translatedText;
+        if (!tr.toLowerCase().includes('mymemory')) {
+          liveHindiMeaning = tr.trim();
+        }
       }
-    } catch (err) {
-      if (matchedLocal) {
-        setThesaurusData({
-          word,
-          phonetic: '',
-          audioUrl: '',
-          origin: '',
-          meanings: [{
-            partOfSpeech: matchedLocal.type || 'Word',
-            definitions: [{
-              definition: matchedLocal.meaning,
-              example: matchedLocal.exampleSentence
-            }],
-            synonyms: matchedLocal.synonyms || [],
-            antonyms: matchedLocal.antonyms || []
-          }],
-          extraSynonyms: matchedLocal.synonyms || [],
-          extraAntonyms: matchedLocal.antonyms || []
-        });
-      } else {
-        setThesaurusError('Unable to connect to Thesaurus API. Please check your internet connection.');
+
+      const extraSyn: string[] = synRes.status === 'fulfilled' && Array.isArray(synRes.value)
+        ? synRes.value.map((i: any) => i.word) : [];
+      const extraAnt: string[] = antRes.status === 'fulfilled' && Array.isArray(antRes.value)
+        ? antRes.value.map((i: any) => i.word) : [];
+
+      let parsedMeanings: DictMeaning[] = matchedLocal ? [{
+        partOfSpeech: matchedLocal.type || 'Adjective / Noun',
+        definitions: [{
+          definition: matchedLocal.meaning,
+          example: matchedLocal.exampleSentence
+        }],
+        synonyms: matchedLocal.synonyms || [],
+        antonyms: matchedLocal.antonyms || []
+      }] : [];
+
+      let phonetic = '';
+      let audioUrl = '';
+      let origin = '';
+
+      if (dictRes.status === 'fulfilled' && Array.isArray(dictRes.value) && dictRes.value.length > 0) {
+        const entry = dictRes.value[0];
+        phonetic = entry.phonetic || (entry.phonetics && entry.phonetics[0]?.text) || '';
+        
+        // Find valid audio mp3
+        if (entry.phonetics && Array.isArray(entry.phonetics)) {
+          const audioObj = entry.phonetics.find((p: any) => p.audio && p.audio.length > 0);
+          if (audioObj) {
+            audioUrl = audioObj.audio.startsWith('//') ? 'https:' + audioObj.audio : audioObj.audio;
+          }
+        }
+
+        if (entry.meanings && Array.isArray(entry.meanings) && entry.meanings.length > 0) {
+          const apiMeanings: DictMeaning[] = entry.meanings.slice(0, 3).map((m: any) => ({
+            partOfSpeech: m.partOfSpeech || 'Word',
+            definitions: Array.isArray(m.definitions) ? m.definitions.slice(0, 2).map((d: any) => ({
+              definition: d.definition,
+              example: d.example
+            })) : [{ definition: `Meaning of ${word}` }],
+            synonyms: Array.isArray(m.synonyms) ? m.synonyms.slice(0, 8) : [],
+            antonyms: Array.isArray(m.antonyms) ? m.antonyms.slice(0, 8) : []
+          }));
+
+          if (parsedMeanings.length === 0) {
+            parsedMeanings = apiMeanings;
+          } else {
+            parsedMeanings = [...parsedMeanings, ...apiMeanings];
+          }
+        }
       }
+
+      // Datamuse definition fallback
+      if (parsedMeanings.length === 0 && dmRes.status === 'fulfilled' && Array.isArray(dmRes.value) && dmRes.value[0]?.defs) {
+        const defs: string[] = dmRes.value[0].defs;
+        if (defs.length > 0) {
+          const parts = defs[0].split('\t');
+          const pos = parts.length > 1 ? parts[0] : 'Word';
+          const defText = parts.length > 1 ? parts[1].trim() : defs[0].trim();
+          parsedMeanings = [{
+            partOfSpeech: pos,
+            definitions: [{ definition: defText }],
+            synonyms: extraSyn,
+            antonyms: extraAnt
+          }];
+        }
+      }
+
+      if (parsedMeanings.length === 0) {
+        if (extraSyn.length > 0 || extraAnt.length > 0 || liveHindiMeaning) {
+          parsedMeanings = [{
+            partOfSpeech: 'Word',
+            definitions: [{ definition: liveHindiMeaning ? `Hindi Meaning: ${liveHindiMeaning}` : `English vocabulary entry for "${word}".` }],
+            synonyms: extraSyn,
+            antonyms: extraAnt
+          }];
+        } else if (!matchedLocal) {
+          if (!navigator.onLine) {
+            setThesaurusError('📡 इंटरनेट बंद है। नए शब्दों को खोजने के लिए कृपया Mobile Data / Wi-Fi चालू करें।');
+          } else {
+            setThesaurusError(`"${word}" के लिए कोई शब्दकोश परिणाम नहीं मिला। कृपया वर्तनी (Spelling) जांचें।`);
+          }
+          setThesaurusLoading(false);
+          return;
+        }
+      }
+
+      const combinedSyn = Array.from(new Set([
+        ...(matchedLocal?.synonyms || []),
+        ...parsedMeanings.flatMap(m => m.synonyms),
+        ...extraSyn
+      ])).slice(0, 15);
+
+      const combinedAnt = Array.from(new Set([
+        ...(matchedLocal?.antonyms || []),
+        ...parsedMeanings.flatMap(m => m.antonyms),
+        ...extraAnt
+      ])).slice(0, 15);
+
+      setThesaurusData({
+        word: matchedLocal?.word || word,
+        phonetic,
+        audioUrl,
+        origin,
+        meanings: parsedMeanings,
+        extraSynonyms: combinedSyn,
+        extraAntonyms: combinedAnt
+      });
+
+    } catch {
+      // If network fails and local exists, local data is already active
     } finally {
+      clearTimeout(timeoutId);
       setThesaurusLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: '40px 24px 48px 24px', maxWidth: '720px', margin: '0 auto' }}>
+    <div style={{ padding: '16px 12px 32px 12px', maxWidth: '680px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
       
       {/* ─── HEADER ─── */}
-      <div style={{ marginBottom: '28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-          <FlatIconVocabBank size={32} />
-          <p style={{ fontSize: '0.8rem', fontWeight: 800, color: '#8b5cf6', letterSpacing: '0.5px', textTransform: 'uppercase', margin: 0 }}>
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <FlatIconVocabBank size={24} />
+          <p style={{ fontSize: '11px', fontWeight: 800, color: '#8b5cf6', letterSpacing: '0.5px', textTransform: 'uppercase', margin: 0 }}>
             AI Vocab Intelligence Engine
           </p>
         </div>
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.5px', lineHeight: 1.2, marginBottom: '8px' }}>
-          Search any English word.
+        <h1 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 3px 0' }}>
+          Search Any English Word
         </h1>
-        <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
-          Instant AI memory tricks, Hindi meanings, etymology & 1,600+ SSC PYQ breakdown.
+        <p style={{ fontSize: '12px', color: 'var(--text-dim)', margin: 0 }}>
+          Instant Hindi meanings, memory tricks & 6,400+ SSC PYQ breakdown.
         </p>
       </div>
 
       {/* ─── AI WORD SEARCH BAR ─── */}
       <div style={{
-        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%)',
-        border: '1.5px solid rgba(168, 85, 247, 0.35)',
-        borderRadius: '16px',
-        padding: '6px 6px 6px 16px',
+        background: 'var(--bg-surface)',
+        border: '1.5px solid rgba(168, 85, 247, 0.4)',
+        borderRadius: '14px',
+        padding: '6px 8px 6px 14px',
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        marginBottom: '20px',
-        boxShadow: '0 4px 20px rgba(168, 85, 247, 0.1)'
+        gap: '10px',
+        marginBottom: '12px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-          <Brain size={18} color="#8b5cf6" />
-          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#8b5cf6', background: 'rgba(168, 85, 247, 0.14)', padding: '3px 8px', borderRadius: '6px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-            AI Engine
-          </span>
-        </div>
+        <Brain size={16} color="#8b5cf6" style={{ flexShrink: 0 }} />
         <input
           type="text"
-          placeholder="Type any word (e.g. ephemeral, benevolent)..."
+          placeholder="Type any word (e.g. ephemeral, candid)..."
           value={searchTerm}
           onChange={handleSearchChange}
-          onKeyDown={(e) => e.key === 'Enter' && fetchThesaurusWord(searchTerm || 'consistent')}
+          onKeyDown={(e) => e.key === 'Enter' && fetchThesaurusWord(searchTerm || 'ephemeral')}
           style={{
             flex: 1,
-            padding: '10px 0',
+            padding: '8px 0',
             background: 'transparent',
             border: 'none',
             color: 'var(--text-main)',
-            fontSize: '0.95rem',
+            fontSize: '13.5px',
             outline: 'none',
             minWidth: 0
           }}
@@ -226,15 +328,14 @@ export const VocabBank: React.FC = () => {
           <button
             onClick={() => setSearchTerm('')}
             style={{
-              background: 'rgba(255, 255, 255, 0.1)',
+              background: 'transparent',
               border: 'none',
-              color: 'var(--text-muted)',
+              color: 'var(--text-dim)',
               cursor: 'pointer',
               padding: '4px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: '50%',
               flexShrink: 0
             }}
             title="Clear text"
@@ -243,58 +344,49 @@ export const VocabBank: React.FC = () => {
           </button>
         )}
         <button
-          onClick={() => fetchThesaurusWord(searchTerm || 'consistent')}
+          onClick={() => fetchThesaurusWord(searchTerm || 'ephemeral')}
           style={{
-            padding: '10px 20px',
-            fontSize: '0.85rem',
+            padding: '8px 14px',
+            fontSize: '12.5px',
             fontWeight: 700,
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
             color: '#ffffff',
             border: 'none',
             cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
-            boxShadow: '0 4px 14px rgba(168, 85, 247, 0.35)',
-            transition: 'all 0.15s ease'
+            flexShrink: 0
           }}
         >
-          <Sparkles size={15} />
-          <span>AI Word Search</span>
+          <span>AI Scan</span>
         </button>
       </div>
 
-      {/* ─── QUICK WORD SUGGESTIONS ─── */}
-      {!isThesaurusOpen && (
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '28px' }}>
-          {['Ephemeral', 'Benevolent', 'Pragmatic', 'Eloquent', 'Ubiquitous'].map(w => (
-            <button
-              key={w}
-              onClick={() => { setSearchTerm(w.toLowerCase()); fetchThesaurusWord(w.toLowerCase()); }}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '9999px',
-                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)',
-                border: '1px solid rgba(168, 85, 247, 0.25)',
-                color: 'var(--text-main)',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <Sparkles size={11} color="#8b5cf6" />
-              <span>{w}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* ─── QUICK TAP VOCAB CHIPS ─── */}
+      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '14px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', width: '100%', boxSizing: 'border-box' }}>
+        {['ephemeral', 'benevolent', 'pragmatic', 'ubiquitous', 'candid', 'lethal', 'meticulous', 'tenacious'].map(w => (
+          <button
+            key={w}
+            onClick={() => {
+              setSearchTerm(w);
+              fetchThesaurusWord(w);
+            }}
+            style={{
+              padding: '5px 11px',
+              borderRadius: '8px',
+              background: 'var(--bg-surface-elevated)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-main)',
+              fontSize: '11.5px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}
+          >
+            🔍 {w}
+          </button>
+        ))}
+      </div>
 
       {/* Live Thesaurus Modal */}
       {isThesaurusOpen && (
@@ -485,7 +577,7 @@ export const VocabBank: React.FC = () => {
 
                 {/* ─── AI SMART INSIGHTS CARD ─── */}
                 {(() => {
-                  const matched = VOCAB_ITEMS.find(item => item.word.toLowerCase() === thesaurusData.word.toLowerCase());
+                  const matched = vocabItems.find(item => item.word.toLowerCase() === thesaurusData.word.toLowerCase());
                   const mnemonicText = getAIMnemonic(thesaurusData.word, matched);
                   return (
                     <div style={{
@@ -608,56 +700,71 @@ export const VocabBank: React.FC = () => {
       )}
 
       {/* Results Count Banner */}
-      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px', fontWeight: 600 }}>
+      <div style={{ fontSize: '11.5px', color: 'var(--text-dim)', marginBottom: '12px', fontWeight: 600 }}>
         Showing {visibleItems.length} of {filteredItems.length} vocabulary words
       </div>
 
       {/* Vocab Cards Grid */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))',
-        gap: '20px'
+        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+        gap: '10px',
+        width: '100%',
+        boxSizing: 'border-box'
       }}>
         {visibleItems.map(item => (
-          <div key={item.id} className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'var(--bg-surface)' }}>
+          <div
+            key={item.id}
+            style={{
+              padding: '14px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '12px',
+              boxShadow: 'var(--shadow-xs)',
+              gap: '10px'
+            }}
+          >
             <div>
               {/* Top Row: VOCAB Badge on left, Exam Tag on right */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{
-                  background: 'rgba(99, 102, 241, 0.12)',
+                  background: 'var(--primary-light)',
                   color: 'var(--primary)',
-                  fontWeight: 700,
-                  padding: '4px 12px',
-                  borderRadius: '9999px',
-                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  padding: '2px 7px',
+                  borderRadius: '5px',
+                  fontSize: '9.5px',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
+                  letterSpacing: '0.04em'
                 }}>
                   VOCAB
                 </span>
 
                 {item.examTag && (
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}>
-                    <Tag size={13} />
-                    {item.examTag}
+                  <span style={{ fontSize: '10px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                    <Tag size={11} />
+                    <span>{item.examTag}</span>
                   </span>
                 )}
               </div>
 
               {/* Title Row: Word Name + Audio Speaker Button */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.3px', wordBreak: 'break-word' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.01em', wordBreak: 'break-word', margin: 0 }}>
                   {item.word}
                 </h3>
                 <button 
                   onClick={() => speakWord(item.word)} 
                   title="Pronounce word"
                   style={{
-                    background: 'rgba(99, 102, 241, 0.1)',
+                    background: 'var(--primary-light)',
                     border: 'none',
-                    borderRadius: '50%',
-                    width: '36px',
-                    height: '36px',
+                    borderRadius: '8px',
+                    width: '30px',
+                    height: '30px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -666,37 +773,37 @@ export const VocabBank: React.FC = () => {
                     flexShrink: 0
                   }}
                 >
-                  <Volume2 size={18} />
+                  <Volume2 size={15} />
                 </button>
               </div>
 
               {/* Hindi Meaning in Purple Text */}
               {item.hindiMeaning && (
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#8b5cf6', marginBottom: '10px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#8b5cf6', marginBottom: '6px' }}>
                   {item.hindiMeaning}
                 </div>
               )}
 
               {/* English Meaning */}
-              <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginBottom: '18px', lineHeight: 1.5 }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-main)', marginBottom: '10px', lineHeight: 1.4, margin: 0 }}>
                 {item.meaning}
               </p>
 
               {/* SYNONYMS Section (Green Pills) */}
               {item.synonyms && item.synonyms.length > 0 && (
-                <div style={{ marginBottom: '14px' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--success)', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--success)', letterSpacing: '0.04em', marginBottom: '4px' }}>
                     SYNONYMS:
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                     {item.synonyms.map((syn, synIdx) => (
                       <span key={synIdx} style={{
-                        background: 'rgba(16, 185, 129, 0.12)',
+                        background: 'rgba(16, 185, 129, 0.1)',
                         color: 'var(--success)',
                         fontWeight: 700,
-                        padding: '5px 12px',
-                        borderRadius: '9999px',
-                        fontSize: '0.8rem'
+                        padding: '2px 7px',
+                        borderRadius: '5px',
+                        fontSize: '11px'
                       }}>
                         {syn}
                       </span>
@@ -707,19 +814,19 @@ export const VocabBank: React.FC = () => {
 
               {/* ANTONYMS Section (Red Pills) */}
               {item.antonyms && item.antonyms.length > 0 && (
-                <div style={{ marginBottom: '18px' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--error)', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--error)', letterSpacing: '0.04em', marginBottom: '4px' }}>
                     ANTONYMS:
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                     {item.antonyms.map((ant, antIdx) => (
                       <span key={antIdx} style={{
-                        background: 'rgba(239, 68, 68, 0.12)',
+                        background: 'rgba(239, 68, 68, 0.1)',
                         color: 'var(--error)',
                         fontWeight: 700,
-                        padding: '5px 12px',
-                        borderRadius: '9999px',
-                        fontSize: '0.8rem'
+                        padding: '2px 7px',
+                        borderRadius: '5px',
+                        fontSize: '11px'
                       }}>
                         {ant}
                       </span>
@@ -732,15 +839,15 @@ export const VocabBank: React.FC = () => {
             {/* Quoted Example Sentence Container */}
             {item.exampleSentence && (
               <div style={{
-                background: 'rgba(99, 102, 241, 0.06)',
-                border: '1px solid rgba(99, 102, 241, 0.15)',
-                padding: '12px 16px',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '0.875rem',
-                color: 'var(--text-main)',
+                background: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-color)',
+                padding: '8px 10px',
+                borderRadius: '8px',
+                fontSize: '11.5px',
+                color: 'var(--text-dim)',
                 fontStyle: 'italic',
-                marginTop: '14px',
-                lineHeight: 1.5
+                marginTop: '4px',
+                lineHeight: 1.4
               }}>
                 "{item.exampleSentence}"
               </div>

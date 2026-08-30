@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Question, QuizAttempt, QuestionTopic, AppView, QuizState } from '../types/quiz';
-import { QUESTIONS_DATA } from '../data/questions';
+import { getQuestionsByTopic } from '../data/questions';
+import { triggerHaptic, triggerSuccessHaptic } from '../utils/nativeHaptics';
+import { syncNativeStatusBar } from '../utils/nativeStatusBar';
 
 interface AppContextType {
   currentView: AppView;
@@ -22,6 +24,7 @@ interface AppContextType {
   // Streak & Points
   streakDays: number;
   xpPoints: number;
+  addXp: (amount: number) => void;
 
   // Bookmarks
   bookmarkedQuestionIds: string[];
@@ -71,6 +74,11 @@ interface AppContextType {
   aiChecksCount: number;
   incrementAiCheck: () => boolean;
   FREE_AI_CHECKS_LIMIT: number;
+
+  // Onboarding Feature Tour
+  showOnboarding: boolean;
+  setShowOnboarding: (show: boolean) => void;
+  openOnboarding: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -121,8 +129,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return localStorage.getItem(STORAGE_KEYS.THEME) === 'dark';
   });
-  const [streakDays] = useState<number>(3);
-  const [xpPoints, setXpPoints] = useState<number>(450);
+  // ─── DYNAMIC STREAK CALCULATION (Based on Calendar Days) ───
+  const [streakDays, setStreakDays] = useState<number>(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const savedLastDate = localStorage.getItem('ssc_last_active_date');
+    const savedStreak = parseInt(localStorage.getItem(STORAGE_KEYS.STREAK) || '1', 10);
+
+    if (!savedLastDate) {
+      localStorage.setItem('ssc_last_active_date', todayStr);
+      localStorage.setItem(STORAGE_KEYS.STREAK, '1');
+      return 1;
+    }
+
+    if (savedLastDate === todayStr) {
+      return Math.max(1, savedStreak);
+    }
+
+    const lastDate = new Date(savedLastDate);
+    const today = new Date(todayStr);
+    const diffDays = Math.round((today.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
+
+    if (diffDays === 1) {
+      const newStreak = savedStreak + 1;
+      localStorage.setItem('ssc_last_active_date', todayStr);
+      localStorage.setItem(STORAGE_KEYS.STREAK, newStreak.toString());
+      return newStreak;
+    } else if (diffDays > 1) {
+      localStorage.setItem('ssc_last_active_date', todayStr);
+      localStorage.setItem(STORAGE_KEYS.STREAK, '1');
+      return 1;
+    }
+
+    return Math.max(1, savedStreak);
+  });
+
+  // ─── DYNAMIC REAL USER XP ACCUMULATION ───
+  const [xpPoints, setXpPoints] = useState<number>(() => {
+    const savedXP = localStorage.getItem(STORAGE_KEYS.XP);
+    if (savedXP !== null) {
+      return parseInt(savedXP, 10);
+    }
+    const savedAttempts = localStorage.getItem(STORAGE_KEYS.ATTEMPTS);
+    if (savedAttempts) {
+      try {
+        const attempts: QuizAttempt[] = JSON.parse(savedAttempts);
+        const calculated = attempts.reduce((acc, att) => acc + (att.correctCount * 10) + 50, 0);
+        localStorage.setItem(STORAGE_KEYS.XP, calculated.toString());
+        return calculated;
+      } catch {
+        return 0;
+      }
+    }
+    localStorage.setItem(STORAGE_KEYS.XP, '0');
+    return 0;
+  });
+
+  const addXp = (amount: number) => {
+    setXpPoints(prev => {
+      const updated = Math.max(0, prev + amount);
+      localStorage.setItem(STORAGE_KEYS.XP, updated.toString());
+      return updated;
+    });
+  };
 
   const [userName, setUserNameState] = useState<string>(() => {
     return localStorage.getItem('ssc_user_name') || 'SSC Aspirant';
@@ -137,6 +205,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [userPhone, setUserPhone] = useState<string | null>(() => {
     return localStorage.getItem(STORAGE_KEYS.USER_PHONE) || null;
   });
+
+  // Onboarding Feature Tour State (Always opens on first visit)
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
+    return localStorage.getItem('englishpro_feature_tour_v1') !== 'true';
+  });
+
+  const openOnboarding = () => {
+    setShowOnboarding(true);
+  };
 
   const [bookmarkedQuestionIds, setBookmarkedQuestionIds] = useState<string[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.BOOKMARKS);
@@ -326,6 +403,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = aiChecksCount + 1;
     setAiChecksCount(updated);
     localStorage.setItem(STORAGE_KEYS.AI_CHECKS, updated.toString());
+    addXp(5);
     return true;
   };
 
@@ -355,7 +433,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentView('quiz');
   };
 
-  // Save to localstorage
+  // Save to localstorage & sync native status bar
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.THEME, isDarkMode ? 'dark' : 'light');
     if (isDarkMode) {
@@ -363,6 +441,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else {
       document.documentElement.classList.remove('dark');
     }
+    syncNativeStatusBar(isDarkMode);
   }, [isDarkMode]);
 
   useEffect(() => {
@@ -377,9 +456,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(quizAttempts));
   }, [quizAttempts]);
 
-  const toggleTheme = () => setIsDarkMode(prev => !prev);
+  const toggleTheme = () => {
+    triggerHaptic('medium');
+    setIsDarkMode(prev => !prev);
+  };
 
   const toggleBookmark = (id: string) => {
+    triggerHaptic('light');
     setBookmarkedQuestionIds(prev => 
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
@@ -402,8 +485,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Start Topic Quiz
   const startTopicQuiz = (topic: QuestionTopic) => {
-    const topicQs = QUESTIONS_DATA.filter(q => q.topic === topic);
-    const questions = topicQs.length > 0 ? topicQs : QUESTIONS_DATA.slice(0, 5);
+    const topicQs = getQuestionsByTopic(topic);
+    const questions = topicQs.length > 0 ? topicQs : [];
     
     setActiveQuiz({
       topic,
@@ -436,6 +519,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const selectOption = (questionId: string, optionIndex: number) => {
     if (!activeQuiz || activeQuiz.isSubmitted) return;
+    triggerHaptic('light');
     setActiveQuiz(prev => prev ? ({
       ...prev,
       userAnswers: { ...prev.userAnswers, [questionId]: optionIndex }
@@ -444,6 +528,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const toggleMarkReview = (questionId: string) => {
     if (!activeQuiz) return;
+    triggerHaptic('light');
     setActiveQuiz(prev => prev ? ({
       ...prev,
       markedForReview: {
@@ -455,6 +540,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const nextQuestion = () => {
     if (!activeQuiz) return;
+    triggerHaptic('light');
     if (activeQuiz.currentIndex < activeQuiz.questions.length - 1) {
       setActiveQuiz(prev => prev ? ({ ...prev, currentIndex: prev.currentIndex + 1 }) : null);
     }
@@ -462,6 +548,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const prevQuestion = () => {
     if (!activeQuiz) return;
+    triggerHaptic('light');
     if (activeQuiz.currentIndex > 0) {
       setActiveQuiz(prev => prev ? ({ ...prev, currentIndex: prev.currentIndex - 1 }) : null);
     }
@@ -469,6 +556,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const goToQuestion = (index: number) => {
     if (!activeQuiz) return;
+    triggerHaptic('light');
     if (index >= 0 && index < activeQuiz.questions.length) {
       setActiveQuiz(prev => prev ? ({ ...prev, currentIndex: index }) : null);
     }
@@ -476,6 +564,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const submitQuiz = (): QuizAttempt | null => {
     if (!activeQuiz || activeQuiz.isSubmitted) return null;
+    triggerSuccessHaptic();
 
     let correct = 0;
     let wrong = 0;
@@ -508,6 +597,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       userAnswers: activeQuiz.userAnswers
     };
 
+    // Calculate and award real XP for student activity
+    const earnedXP = (correct * 10) + 50;
+    addXp(earnedXP);
+
     addQuizAttempt(attempt);
     setLastAttempt(attempt);
     setActiveQuiz(prev => prev ? ({ ...prev, isSubmitted: true }) : null);
@@ -529,6 +622,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toggleTheme,
       streakDays,
       xpPoints,
+      addXp,
       bookmarkedQuestionIds,
       toggleBookmark,
       isBookmarked,
@@ -561,7 +655,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       logoutPhone,
       aiChecksCount,
       incrementAiCheck,
-      FREE_AI_CHECKS_LIMIT
+      FREE_AI_CHECKS_LIMIT,
+      showOnboarding,
+      setShowOnboarding,
+      openOnboarding
     }}>
       {children}
     </AppContext.Provider>

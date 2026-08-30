@@ -1,5 +1,4 @@
 import type { Question, QuestionTopic, CustomTopic } from '../types/quiz';
-import pinnacleQs from './pinnacleQuestions.json';
 
 export const TOPIC_DETAILS: Record<string, { title: string; desc: string; icon: string; badge: string; color?: string }> = {
   spot_error: {
@@ -67,6 +66,18 @@ export const TOPIC_DETAILS: Record<string, { title: string; desc: string; icon: 
   }
 };
 
+export const STATIC_TOPIC_COUNTS: Record<string, number> = {
+  spot_error: 1997,
+  sentence_improvement: 1994,
+  fill_blanks: 2016,
+  cloze_test: 2010,
+  one_word: 2031,
+  idioms_phrases: 1993,
+  synonyms: 2012,
+  antonyms: 2024,
+  misspelled: 2000
+};
+
 export const CURATED_SAMPLE_QUESTIONS: Question[] = [
   {
     id: 'err-1',
@@ -102,10 +113,95 @@ export const CURATED_SAMPLE_QUESTIONS: Question[] = [
   }
 ];
 
-export const QUESTIONS_DATA: Question[] = [
-  ...CURATED_SAMPLE_QUESTIONS,
-  ...(pinnacleQs as Question[])
-];
+export const QUESTIONS_DATA: Question[] = CURATED_SAMPLE_QUESTIONS;
+
+// ══════════════════════════════════════════════════════════════════
+// MODULAR ON-DEMAND TOPIC PACKET LOADER & LRU MEMORY CACHE
+// Loads only the active topic chunk (~2MB) instead of 25MB all at once!
+// ══════════════════════════════════════════════════════════════════
+const TOPIC_MEMORY_CACHE = new Map<string, Question[]>();
+const TOPIC_LOAD_PROMISES = new Map<string, Promise<Question[]>>();
+const GLOBAL_ID_MAP = new Map<string, Question>();
+
+// Seed sample questions into ID map
+CURATED_SAMPLE_QUESTIONS.forEach(q => GLOBAL_ID_MAP.set(q.id, q));
+
+export const loadTopicQuestions = async (topic: string): Promise<Question[]> => {
+  if (TOPIC_MEMORY_CACHE.has(topic)) {
+    return TOPIC_MEMORY_CACHE.get(topic)!;
+  }
+
+  if (TOPIC_LOAD_PROMISES.has(topic)) {
+    return TOPIC_LOAD_PROMISES.get(topic)!;
+  }
+
+  const fetchPromise = (async () => {
+    try {
+      // 1. Try local bundled assets first (0ms latency inside Capacitor Android app)
+      const localRes = await fetch(`/data/topics/${topic}.json`);
+      if (localRes.ok) {
+        const data: Question[] = await localRes.json();
+        if (Array.isArray(data) && data.length > 0) {
+          TOPIC_MEMORY_CACHE.set(topic, data);
+          data.forEach(q => GLOBAL_ID_MAP.set(q.id, q));
+          return data;
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
+    try {
+      // 2. Fallback to jsDelivr CDN
+      const cdnUrl = `https://cdn.jsdelivr.net/gh/edupluscreation/ENGLISHPRO@main/public/data/topics/${topic}.json`;
+      const cdnRes = await fetch(cdnUrl);
+      if (cdnRes.ok) {
+        const data: Question[] = await cdnRes.json();
+        if (Array.isArray(data) && data.length > 0) {
+          TOPIC_MEMORY_CACHE.set(topic, data);
+          data.forEach(q => GLOBAL_ID_MAP.set(q.id, q));
+          return data;
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
+    const samples = CURATED_SAMPLE_QUESTIONS.filter(q => q.topic === topic);
+    TOPIC_MEMORY_CACHE.set(topic, samples);
+    return samples;
+  })();
+
+  TOPIC_LOAD_PROMISES.set(topic, fetchPromise);
+  return fetchPromise;
+};
+
+export const getQuestionsByTopic = (topic: string): Question[] => {
+  const custom = getCustomQuestions().filter(q => q.topic === topic);
+  const cached = TOPIC_MEMORY_CACHE.get(topic);
+  if (cached && cached.length > 0) {
+    return custom.length > 0 ? [...custom, ...cached] : cached;
+  }
+  
+  // Non-blocking trigger to pre-load topic in background
+  loadTopicQuestions(topic);
+
+  const samples = CURATED_SAMPLE_QUESTIONS.filter(q => q.topic === topic);
+  return custom.length > 0 ? [...custom, ...samples] : (samples.length > 0 ? samples : CURATED_SAMPLE_QUESTIONS);
+};
+
+export const getQuestionById = (id: string): Question | undefined => {
+  const custom = getCustomQuestions().find(q => q.id === id);
+  if (custom) return custom;
+  return GLOBAL_ID_MAP.get(id);
+};
+
+export const getTopicCount = (topic: string): number => {
+  const customCount = getCustomQuestions().filter(q => q.topic === topic).length;
+  const cached = TOPIC_MEMORY_CACHE.get(topic);
+  const baseCount = cached ? cached.length : (STATIC_TOPIC_COUNTS[topic] || 100);
+  return baseCount + customCount;
+};
 
 // ══════════════════════════════════════════════════════════════════
 // CUSTOM TOPICS & QUESTIONS STORAGE HELPERS
